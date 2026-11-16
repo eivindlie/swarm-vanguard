@@ -221,8 +221,11 @@ function showEndScreen() {
   sfx.stopMusic();
   const won = game.phase === 'won';
   if (won) {
-    const bonus = game.level.bonus ? Math.round(game.squad.count * 0.6) : 0; // bonus levels pay by final squad size
-    const r = recordWin(save, game.level.id, game.level.coins, game.squad.count, game.squad.maxCount, LEVELS.length, levelIdx + 1, LEVELS[levelIdx + 1]?.bonus !== undefined, bonus);
+    // bonus levels pay by final squad size on the FIRST clear; replays pay half the base (no coin farming)
+    const first = !save.stars[game.level.id];
+    const bonus = game.level.bonus && first ? Math.round(game.squad.count * 0.6) : 0;
+    const base = game.level.bonus && !first ? Math.round(game.level.coins / 2) : game.level.coins;
+    const r = recordWin(save, game.level.id, base, game.squad.count, game.squad.maxCount, LEVELS.length, levelIdx + 1, LEVELS[levelIdx + 1]?.bonus !== undefined, bonus);
     const lastLevel = levelIdx + 1 >= LEVELS.length;
     hud.showEnd(true, `Survivors: ${game.squad.count}  ·  +${r.coins} coins`, lastLevel ? 'Play again' : 'Next level', r.stars, game.level.bonus ? 'BONUS CLEAR!' : 'VICTORY!');
   } else {

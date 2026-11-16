@@ -6,7 +6,7 @@ import { policies } from './bot';
 const id = Number(process.argv[2] ?? 4);
 const seed = Number(process.argv[3] ?? 1);
 const k = process.argv[4] ? Number(process.argv[4]) : undefined;
-const level = makeLevels(k ? { [id]: k } : {})[id - 1];
+const level = makeLevels(k ? { [id]: k } : {}).find((l) => l.id === id)!;
 console.log(`level ${id} length=${level.length.toFixed(0)} hpMul=${level.hpMul?.toFixed(2)} spawns=${level.spawns.length}`);
 for (const name of Object.keys(policies)) {
   const g = new Game(level, seed);

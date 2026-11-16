@@ -73,11 +73,12 @@ function generated(id: number, K: (id: number) => number): LevelDef {
     let right;
     if (id >= 3 && rng.next() < 0.4) {
       const up = upgrades[Math.floor(rng.next() * upgrades.length)];
-      const other = rng.next() < 0.5 ? add(4 + id) : rng.next() < 0.5 ? sub(3 + id * 2) : div(2);
+      const other = rng.next() < 0.5 ? add(4 + id) : rng.next() < 0.4 ? sub(3 + id * 2) : div(2);
       [left, right] = side ? [up, other] : [other, up];
     } else {
       const good = rng.next() < 0.3 ? mul(2) : add(4 + id);
-      const bad = rng.next() < 0.5 ? sub(3 + id * 2) : rng.next() < 0.5 ? div(2) : div(3);
+      // traps must matter against a big squad: usually they halve or third it, only sometimes a flat loss
+      const bad = rng.next() < 0.25 ? sub(3 + id * 2) : rng.next() < 0.55 ? div(2) : div(3);
       [left, right] = side ? [good, bad] : [bad, good];
     }
     b.gates(left, right);
@@ -99,14 +100,14 @@ function jackpot(id: number, world: number, name: string, big: number): LevelDef
   return new LevelBuilder(1)
     .meta({ bonus: 'jackpot', world })
     .gates(add(10), mul(2), 12)
-    .block(0, Math.round(120 * big), multi('POWER UP', soldiers(40), dmgUp), w)
+    .block(0, Math.round(200 * big), multi('POWER UP', soldiers(40), dmgUp), w)
     .gates(mul(2), mul(3), 12)
-    .block(0, Math.round(400 * big), multi('RAPID FIRE', soldiers(70), rateUp, pierceUp), w)
+    .block(0, Math.round(4000 * big), multi('RAPID FIRE', soldiers(70), rateUp, pierceUp), w)
     .counter(0, 30, 4, 320, 14)
-    .block(0, Math.round(1200 * big), multi('ARSENAL', soldiers(110), rocket, dmgUp), w)
+    .block(0, Math.round(7000 * big), multi('ARSENAL', soldiers(110), rocket, dmgUp), w)
     .gates(mul(2), mul(2), 12)
-    .block(0, Math.round(3600 * big), multi('MEGA PACK', soldiers(150), rateUp, dmgUp, laser), w)
-    .block(0, Math.round(9000 * big), multi('JACKPOT!!!', soldiers(300), dmgUp, rateUp, dmgUp, rateUp), { w: 6, after: 20 })
+    .block(0, Math.round(13000 * big), multi('MEGA PACK', soldiers(150), rateUp, dmgUp, laser), w)
+    .block(0, Math.round(24000 * big), multi('JACKPOT!!!', soldiers(300), dmgUp, rateUp, dmgUp, rateUp), { w: 6, after: 20 })
     .build(id, name, 0, 60, 1, 0);
 }
 
@@ -128,7 +129,7 @@ function makeBonus(K: (id: number) => number): Record<number, LevelDef> {
   return {
     4: jackpot(101, 0, 'Jackpot Vault', 1),
     8: swarmBonus(102, 1, 'Horde Slaughter', [700, 1100, 1500], K),
-    12: jackpot(103, 2, 'Treasure Glacier', 1.3),
+    12: jackpot(103, 2, 'Treasure Glacier', 1.1),
     16: swarmBonus(104, 3, 'Inferno Swarm', [1000, 1600, 2200], K),
   };
 }

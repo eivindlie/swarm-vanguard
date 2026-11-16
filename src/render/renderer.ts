@@ -30,6 +30,8 @@ export class GameRenderer {
   private dpr = 1;
   private maxDpr = 2;
   private frameAvg = 16;
+  private noRaiseUntil = 0;
+  private drops = 0;
   private slowFor = 0;
   private fastFor = 0;
   /** Accessibility: scale camera shake (0 disables it). */
@@ -189,9 +191,12 @@ export class GameRenderer {
       if (this.slowFor > 1.2) {
         this.dpr = Math.max(1, this.dpr - 0.25);
         this.slowFor = 0;
+        // do not climb straight back to the level that was just too slow (a resize hitch every few seconds)
+        this.drops++;
+        this.noRaiseUntil = this.time + 45 * this.drops;
         this.resize();
       }
-    } else if (this.frameAvg < 15 && this.dpr < this.maxDpr) {
+    } else if (this.frameAvg < 15 && this.dpr < this.maxDpr && this.drops < 3 && this.time > this.noRaiseUntil) {
       this.fastFor += dt;
       this.slowFor = 0;
       if (this.fastFor > 4) {

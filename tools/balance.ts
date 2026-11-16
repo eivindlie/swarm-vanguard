@@ -6,7 +6,8 @@ const names = Object.keys(policies);
 
 console.log(`Win rate (%) / avg survivors over ${seeds} seeds\n`);
 console.log('level'.padEnd(6) + names.map((n) => n.padEnd(18)).join(''));
-for (const level of LEVELS) {
+// bonus levels have thousands of enemies (slow) and their own check (bonus-check.ts): pass `all` as 2nd arg to include them
+for (const level of LEVELS.filter((l) => !l.bonus || process.argv[3] === 'all')) {
   let row = (level.bonus ? 'B' + (level.id - 100) : String(level.id)).padEnd(6);
   for (const name of names) {
     let wins = 0;

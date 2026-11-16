@@ -140,7 +140,13 @@ export class Sfx {
 
   private scheduleMusic() {
     const c = this.ctx;
-    if (!c || this.muted) return;
+    if (!c) return;
+    if (this.muted) {
+      // keep the clock moving so unmuting does not schedule every missed step at once
+      this.nextStep = Math.max(this.nextStep, c.currentTime + 0.05);
+      return;
+    }
+    if (this.nextStep < c.currentTime) this.nextStep = c.currentTime + 0.05; // also after a long tab pause
     const stepLen = 60 / Sfx.BPM / 2; // eighth notes
     while (this.nextStep < c.currentTime + 0.12) {
       const t = this.nextStep;

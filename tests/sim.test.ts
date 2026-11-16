@@ -300,3 +300,17 @@ describe('bonus levels and jackpot rewards', () => {
     expect(rb.coins - ra.coins).toBe(180);
   });
 });
+
+describe('blocks are walls the squad can break', () => {
+  it('a big pinned squad breaks a lane-wide block in about hp / dps (bullets start in front of the block)', () => {
+    const hp = 3000;
+    const lvl: LevelDef = { id: 90, name: 'pin', length: 80, coins: 1, spawns: [{ t: 'block', y: 14, x: 0, w: 6, hp, reward: { kind: 'soldiers', n: 1 } }] };
+    for (const n of [60, 150, 300]) {
+      const g = new Game(lvl, 1, [{ stat: 'startSize', add: n - 5 }]);
+      while (g.phase === 'playing' && g.blocks.length && g.tick < 6000) g.step({ targetX: 0 });
+      const ideal = hp / ((g.stat('damage') * n) / g.stat('fireInterval'));
+      expect(g.blocks.length, `${n} soldiers never broke the block`).toBe(0);
+      expect(g.tick / 60, `${n} soldiers`).toBeLessThan(ideal * 1.4 + 4);
+    }
+  });
+});

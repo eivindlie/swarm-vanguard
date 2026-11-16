@@ -347,10 +347,18 @@ export class Game {
       const edge = hd * 0.55 * Math.sqrt(Math.max(0, 1 - (dx / hw) * (dx / hw)));
       let ang = f * extraSpread * 2;
       if (w.cone > 0) ang += (this.rng.next() - 0.5) * w.cone;
+      // a block directly ahead is a wall: bullets must start in FRONT of it, otherwise a deep crowd
+      // (whose front edge reaches past the block) would shoot over it and never damage it
+      let spawnY = sq.y + 0.4 + edge;
+      for (const bl of this.blocks) {
+        if (bl.hp <= 0 || Math.abs(sq.x + dx - bl.x) >= bl.w / 2) continue;
+        const front = bl.y - bl.d / 2 - 0.05;
+        if (front > sq.y && spawnY > front) spawnY = front;
+      }
       this.bullets.push({
         id: this.nextId++,
         x: sq.x + dx,
-        y: sq.y + 0.4 + edge,
+        y: spawnY,
         vx: Math.sin(ang) * speed,
         vy: Math.cos(ang) * speed,
         dmg,
