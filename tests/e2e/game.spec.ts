@@ -59,8 +59,8 @@ test('a bot can clear level 1: win screen, stars and persistent save', async ({ 
   await expect(page.locator('#end')).toHaveClass(/show/, { timeout: 50_000 });
   await expect(page.locator('#endTitle')).toHaveText('VICTORY!');
   const save = await page.evaluate(() => JSON.parse(localStorage.getItem('swarmvanguard.save')!));
-  expect(save.version).toBe(1);
-  expect(save.unlockedLevel).toBe(2);
+  expect(save.stars['1']).toBeGreaterThanOrEqual(1);
+  expect(save.version).toBe(2);
   expect(save.coins).toBeGreaterThan(0);
   expect(save.stars['1']).toBeGreaterThanOrEqual(1);
   await page.screenshot({ path: 'screenshots/e2e-win.png' });
@@ -115,7 +115,7 @@ test('drag target never exceeds what the squad can reach (no dead zone)', async 
 test('shop: buying an upgrade spends coins, persists and applies at the next start', async ({ page }) => {
   await page.addInitScript(() => {
     if (!localStorage.getItem('swarmvanguard.save')) {
-      localStorage.setItem('swarmvanguard.save', JSON.stringify({ version: 1, unlockedLevel: 3, coins: 500, stars: {}, upgrades: {} }));
+      localStorage.setItem('swarmvanguard.save', JSON.stringify({ version: 2, coins: 500, stars: { 1: 3, 2: 3 }, upgrades: {} }));
     }
   });
   await page.goto('/?seed=1');
@@ -160,7 +160,7 @@ test('a bot clears the Jackpot Vault bonus level and gets the bonus payout', asy
 test('tapping a level in the menu starts that level directly', async ({ page }) => {
   await page.addInitScript(() => {
     if (!localStorage.getItem('swarmvanguard.save')) {
-      localStorage.setItem('swarmvanguard.save', JSON.stringify({ version: 1, unlockedLevel: 6, coins: 0, stars: {}, upgrades: {} }));
+      localStorage.setItem('swarmvanguard.save', JSON.stringify({ version: 2, coins: 0, stars: { 1: 3, 2: 3, 3: 3, 4: 3 }, upgrades: {} }));
     }
   });
   await page.goto('/?seed=1');
@@ -273,7 +273,7 @@ test('PWA files: manifest is valid and every icon it lists exists', async ({ pag
 test('the big button always continues from the furthest level; tapping another level plays exactly that level', async ({ page }) => {
   await page.addInitScript(() => {
     if (!localStorage.getItem('swarmvanguard.save')) {
-      localStorage.setItem('swarmvanguard.save', JSON.stringify({ version: 1, unlockedLevel: 6, coins: 0, stars: { 1: 3, 2: 2, 3: 2, 4: 3 }, upgrades: {} }));
+      localStorage.setItem('swarmvanguard.save', JSON.stringify({ version: 2, coins: 0, stars: { 1: 3, 2: 2, 3: 2, 4: 3 }, upgrades: {} }));
     }
   });
   await page.goto('/?seed=1');

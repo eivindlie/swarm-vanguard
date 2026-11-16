@@ -101,7 +101,7 @@ describe('squad cap and meta', () => {
     expect(starsFor(10, 100)).toBe(1);
   });
   it('load falls back to a fresh save without storage', () => {
-    expect(loadSave().unlockedLevel).toBe(1);
+    expect(unlockedCount(loadSave(), LEVELS)).toBe(1);
   });
 });
 
@@ -254,7 +254,7 @@ describe('new mechanics', () => {
   });
 });
 
-import { recordWin } from '../src/meta/save';
+import { recordWin, unlockedCount } from '../src/meta/save';
 
 describe('bonus levels and jackpot rewards', () => {
   it('a multi reward applies every part at once', () => {
@@ -287,16 +287,39 @@ describe('bonus levels and jackpot rewards', () => {
       expect(g.phase, l.name).toBe('won');
     }
   });
-  it('clearing the level before a bonus level unlocks the one after it too (bonus is optional)', () => {
+  it('unlocks are derived from cleared levels: optional levels never block, however many come in a row', () => {
+    const lv = [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 101, bonus: true }, { id: 201, bonus: true }, { id: 5 }, { id: 6 }];
     const s = loadSave();
-    recordWin(s, 4, 20, 10, 10, LEVELS.length, 4, true, 0);
-    expect(s.unlockedLevel).toBe(6);
+    expect(unlockedCount(s, lv)).toBe(1); // nothing cleared: only level 1
+    for (const id of [1, 2, 3]) s.stars[id] = 3;
+    expect(unlockedCount(s, lv)).toBe(4); // level 4 is the frontier
+    s.stars[4] = 2;
+    // the bonus AND the siege are open, and level 5 (position 7) is the continue target, not the siege
+    expect(unlockedCount(s, lv)).toBe(7);
+    s.stars[5] = 1;
+    expect(unlockedCount(s, lv)).toBe(8);
+    s.stars[6] = 1;
+    expect(unlockedCount(s, lv)).toBe(lv.length); // all cleared
+  });
+  it('a v1 save (position-based unlockedLevel) migrates without losing progress', () => {
+    // vitest runs in Node: provide a tiny localStorage
+    const store = new Map<string, string>();
+    (globalThis as any).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v), removeItem: (k: string) => void store.delete(k) };
+    localStorage.setItem('swarmvanguard.save', JSON.stringify({ version: 1, unlockedLevel: 11, coins: 123, stars: { 1: 3, 2: 3, 3: 2, 4: 3, 5: 3, 6: 2, 7: 3, 8: 3, 9: 1, 10: 2 }, upgrades: { size: 2 } }));
+    const s = loadSave();
+    expect(s.version).toBe(2);
+    expect(s.coins).toBe(123);
+    expect(s.upgrades.size).toBe(2);
+    // levels 1-10 were cleared: the next regular level (id 11) is the frontier, wherever the optional levels sit
+    const front = unlockedCount(s, LEVELS) - 1;
+    expect(LEVELS[front].id).toBe(11);
+    delete (globalThis as any).localStorage;
   });
   it('bonus coins add to the reward', () => {
     const a = loadSave();
     const b = loadSave();
-    const ra = recordWin(a, 101, 60, 100, 100, LEVELS.length, 5, false, 0);
-    const rb = recordWin(b, 101, 60, 100, 100, LEVELS.length, 5, false, 180);
+    const ra = recordWin(a, 101, 60, 100, 100, 0);
+    const rb = recordWin(b, 101, 60, 100, 100, 180);
     expect(rb.coins - ra.coins).toBe(180);
   });
 });

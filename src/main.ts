@@ -4,7 +4,7 @@ import { GameRenderer } from './render/renderer';
 import { Controls } from './input/controls';
 import { Hud } from './ui/hud';
 import { Sfx } from './audio/sfx';
-import { loadSave, metaModifiers, recordWin, writeSave } from './meta/save';
+import { loadSave, metaModifiers, recordWin, unlockedCount, writeSave } from './meta/save';
 import { buy } from './meta/upgrades';
 import { loadSettings, saveSettings } from './meta/settings';
 import { InstallPrompt } from './ui/install';
@@ -24,7 +24,7 @@ const idxOfId = (id: number) => {
   const i = LEVELS.findIndex((l) => l.id === id);
   return i >= 0 ? i : Math.max(0, Math.min(LEVELS.length - 1, id - 1));
 };
-let levelIdx = urlLevel ? idxOfId(Number(urlLevel)) : Math.min(save.unlockedLevel, LEVELS.length) - 1;
+let levelIdx = urlLevel ? idxOfId(Number(urlLevel)) : unlockedCount(save, LEVELS) - 1;
 let seed = Number(params.get('seed') ?? 1);
 // ?autoplay=balanced|greedy-expand|pure-fight|naive lets a bot play (demo / visual testing)
 const autoPolicy = policies[params.get('autoplay') ?? ''];
@@ -77,12 +77,12 @@ function refreshToggles() {
 }
 
 /** The level the big button continues from: the furthest the player has unlocked (a debug `?level=` overrides it). */
-const frontierIdx = () => (urlLevel ? idxOfId(Number(urlLevel)) : Math.min(save.unlockedLevel, LEVELS.length) - 1);
+const frontierIdx = () => (urlLevel ? idxOfId(Number(urlLevel)) : unlockedCount(save, LEVELS) - 1);
 
 function refreshMenu() {
   hud.setCoins(save.coins);
   // the big button always continues from the frontier; tapping any unlocked level plays exactly that level
-  hud.renderLevels(LEVELS, urlLevel ? LEVELS.length : save.unlockedLevel, save.stars, frontierIdx(), (i) => {
+  hud.renderLevels(LEVELS, urlLevel ? LEVELS.length : unlockedCount(save, LEVELS), save.stars, frontierIdx(), (i) => {
     restart(LEVELS[i].id);
     startGame();
   });
@@ -272,7 +272,7 @@ function showEndScreen() {
     const first = !save.stars[game.level.id];
     const bonus = game.level.bonus && first ? Math.round(game.squad.count * 0.6) : 0;
     const base = game.level.bonus && !first ? Math.round(game.level.coins / 2) : game.level.coins;
-    const r = recordWin(save, game.level.id, base, game.squad.count, game.squad.maxCount, LEVELS.length, levelIdx + 1, LEVELS[levelIdx + 1]?.bonus !== undefined, bonus);
+    const r = recordWin(save, game.level.id, base, game.squad.count, game.squad.maxCount, bonus);
     const lastLevel = levelIdx + 1 >= LEVELS.length;
     hud.showEnd(true, `Survivors: ${game.squad.count}  ·  +${r.coins} coins`, lastLevel ? 'Play again' : 'Next level', r.stars, game.level.bonus ? 'BONUS CLEAR!' : 'VICTORY!');
   } else {
