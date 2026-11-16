@@ -1,4 +1,4 @@
-// Serves a directory over HTTP and loads /some-repo/ to prove the build works under a subpath (GitHub Pages).
+// Serves a directory over HTTP and loads /swarm-vanguard/ to prove the build works under a subpath (GitHub Pages).
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,7 +18,7 @@ page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 page.on('requestfailed', (r) => failed.push(r.url()));
 page.on('response', (r) => { if (r.status() >= 400) failed.push(`${r.status()} ${r.url()}`); });
-await page.goto('http://localhost:5195/some-repo/?autostart=1');
+await page.goto('http://localhost:5195/swarm-vanguard/?autostart=1');
 await page.waitForFunction(() => window.__game, null, { timeout: 15000 });
 await page.waitForTimeout(800);
 console.log('state', JSON.stringify(await page.evaluate(() => window.__game.getState())));
