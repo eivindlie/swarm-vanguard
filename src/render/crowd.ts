@@ -86,6 +86,9 @@ export class Crowd {
   private prevY = 0;
   private time = 0;
   private bossVariant: M.BossVariant | null = null;
+  private carpet: Unit;
+  private carpetCells = 0;
+  private carpetOn = false;
 
   constructor(private scene: THREE.Scene) {
     this.soldiers = this.unit(M.soldierGeometry(), MAX_SOLDIERS, false);
@@ -101,6 +104,10 @@ export class Crowd {
     this.far.splitter = this.unit(M.splitterFarGeometry(), FAR_MAX.splitter!, false);
     this.enemies.boss = this.unit(M.bossGeometry('golem'), 2, true, 0.06);
     this.bossVariant = 'golem';
+
+    // decorative mass under the nest roof in a siege (hidden in lane levels)
+    this.carpet = this.unit(M.gruntFarGeometry(), 420, false);
+    this.carpet.mesh.visible = false;
 
     this.corpseMeshes.soldier = this.unit(M.soldierGeometry(), 110, false);
     this.corpseMeshes.grunt = this.unit(M.gruntGeometry(), 220, false);
@@ -170,6 +177,40 @@ export class Crowd {
     }
   }
 
+  /**
+   * A siege has a visible mass under the roof; it thins out as the nest sends waves. Cells are laid out from the back
+   * row to the front row, so showing the first N cells removes the front of the mass first.
+   */
+  setArena(arena: { half: number; depth: number } | null) {
+    this.carpetOn = !!arena;
+    this.carpet.mesh.visible = !!arena;
+    if (!arena) {
+      this.carpet.mesh.count = 0;
+      return;
+    }
+    const sp = 0.42;
+    const cols = Math.floor(6.6 / sp) + 1;
+    const rows = 26;
+    const d = this.dummy;
+    let i = 0;
+    for (let r = rows - 1; r >= 0 && i < this.carpet.max; r--) {
+      for (let c = 0; c < cols && i < this.carpet.max; c++) {
+        d.position.set(-1.3 + (c - (cols - 1) / 2) * sp + Math.sin(i * 12.9) * 0.1, 0, -(arena.depth - 7.5 + r * sp + Math.cos(i * 7.7) * 0.1));
+        d.rotation.set(0, Math.PI, 0);
+        d.scale.setScalar(1.4);
+        d.updateMatrix();
+        this.carpet.mesh.setMatrixAt(i, d.matrix);
+        this.carpet.attrs.anim.setXY(i, hash01(i) * 6.28, 0.7 + hash01(i + 3) * 0.5);
+        this.carpet.attrs.flash.setX(i, 0);
+        i++;
+      }
+    }
+    this.carpetCells = i;
+    this.carpet.mesh.instanceMatrix.needsUpdate = true;
+    this.carpet.attrs.anim.needsUpdate = true;
+    this.carpet.attrs.flash.needsUpdate = true;
+  }
+
   reset() {
     this.flash.clear();
     this.cool.clear();
@@ -237,6 +278,8 @@ export class Crowd {
     this.drawSquad(game, dt);
     this.drawEnemies(game, dt, camera);
     this.drawCorpses(dt);
+    // the mass under the roof thins out as waves are sent, and is gone once the keystone has fallen
+    if (this.carpetOn) this.carpet.mesh.count = game.keystone ? Math.min(this.carpetCells, Math.round(game.reserve() * 2.4)) : 0;
     this.shadows.count = this.shadowN;
     this.shadows.instanceMatrix.needsUpdate = true;
     this.drawBullets(game);

@@ -143,7 +143,7 @@ test('upgrade gates, barrels and splitters are on screen without errors', async 
 test('level select shows one bonus level after each world', async ({ page }) => {
   await page.goto('/?seed=1');
   await page.waitForFunction(() => (window as any).__game);
-  await expect(page.locator('#levels .lv.bonus')).toHaveCount(4);
+  await expect(page.locator('#levels .lv.bonus')).toHaveCount(8); // a bonus level and a siege after each world
   await expect(page.locator('#levels .lvh')).toHaveCount(4);
 });
 
@@ -314,4 +314,47 @@ test('graphics toggle: low quality lowers the pixel ratio cap and is remembered'
   await page.reload();
   await page.waitForFunction(() => (window as any).__game);
   await expect(page.getByRole('button', { name: /Graphics: LOW/ })).toBeVisible();
+});
+
+test('siege: the camera is fixed, the squad moves freely in 2D and the HUD shows the keystone', async ({ page }) => {
+  await page.goto('/?level=201&seed=1&autostart=1');
+  await page.waitForFunction(() => (window as any).__game);
+  await expect(page.locator('#boss')).toHaveClass(/show/);
+  await expect(page.locator('#boss span')).toHaveText('KEYSTONE');
+  await expect(page.locator('#barWrap')).toHaveCSS('visibility', 'hidden');
+  const cam0 = await page.evaluate(() => { const p = (window as any).__game.renderer().camera.position; return [p.x, p.y, p.z]; });
+  const y0 = await page.evaluate(() => (window as any).__game.getState().squad.y);
+  const box = (await page.locator('#stage').boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.8);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.55, { steps: 8 }); // drag UP on the screen
+  await page.waitForTimeout(900);
+  await page.mouse.up();
+  const y1 = await page.evaluate(() => (window as any).__game.getState().squad.y);
+  expect(y1).toBeGreaterThan(y0 + 2); // it walked up the arena
+  const cam1 = await page.evaluate(() => { const p = (window as any).__game.renderer().camera.position; return [p.x, p.y, p.z]; });
+  for (let i = 0; i < 3; i++) expect(Math.abs(cam1[i] - cam0[i])).toBeLessThan(0.6); // only shake, never following
+});
+
+test('siege: lane levels still ignore vertical drag', async ({ page }) => {
+  await page.goto('/?level=2&seed=1&autostart=1');
+  await page.waitForFunction(() => (window as any).__game);
+  const box = (await page.locator('#stage').boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.8);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.3, { steps: 6 });
+  await page.waitForTimeout(500);
+  await page.mouse.up();
+  const x = await page.evaluate(() => (window as any).__game.getState().squad.x);
+  expect(Math.abs(x)).toBeLessThan(0.3); // straight up on the screen = no sideways movement, and no extra forward either
+});
+
+test('a bot breaks the siege: the roof collapses and the title says SIEGE BROKEN', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.goto('/?level=201&seed=1&autoplay=balanced&autostart=1&speed=10');
+  await page.waitForFunction(() => (window as any).__game);
+  await expect(page.locator('#end')).toHaveClass(/show/, { timeout: 100_000 });
+  await expect(page.locator('#endTitle')).toHaveText('SIEGE BROKEN!');
+  const save = await page.evaluate(() => JSON.parse(localStorage.getItem('swarmvanguard.save')!));
+  expect(save.stars['201']).toBeGreaterThanOrEqual(1);
 });

@@ -63,7 +63,7 @@ function cloudTexture(color: string): THREE.CanvasTexture {
 }
 
 /** One tile = 8 units wide (the lane) x 8 units long. Edge stripes and faint centre dashes read as a road. */
-function laneTexture(theme: Theme, seed: number): THREE.CanvasTexture {
+function laneTexture(theme: Theme, seed: number, wide = false): THREE.CanvasTexture {
   const [c, g] = canvas(256, 256);
   const rng = new Rng(seed);
   g.fillStyle = theme.groundA;
@@ -108,6 +108,7 @@ function laneTexture(theme: Theme, seed: number): THREE.CanvasTexture {
     }
     g.globalAlpha = 1;
   }
+  if (!wide) {
   // lane edges
   g.fillStyle = theme.laneEdge;
   g.fillRect(0, 0, 10, 256);
@@ -119,6 +120,7 @@ function laneTexture(theme: Theme, seed: number): THREE.CanvasTexture {
   g.globalAlpha = 0.28;
   for (let y = 16; y < 256; y += 64) g.fillRect(125, y, 6, 30);
   g.globalAlpha = 1;
+  }
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 4;
@@ -213,13 +215,8 @@ export class World {
     return this.theme;
   }
 
-  /** (Re)build everything that depends on the world and on the level length. */
-  apply(theme: Theme, levelId: number, length: number) {
-    this.clear();
-    this.theme = theme;
-    const seed = levelId * 977 + theme.id.length * 31;
-
-    // lighting + atmosphere
+  /** Lighting, fog, sky gradient, sun and clouds for a theme. */
+  private atmosphere(theme: Theme, seed: number) {
     this.scene.fog = new THREE.Fog(theme.fog, theme.fogNear, theme.fogFar);
     this.hemi.color.set(theme.hemiSky);
     this.hemi.groundColor.set(theme.hemiGround);
@@ -249,6 +246,16 @@ export class World {
       this.sky.add(s);
       this.clouds.push(s);
     }
+
+  }
+
+  /** (Re)build everything that depends on the world and on the level length. */
+  apply(theme: Theme, levelId: number, length: number) {
+    this.clear();
+    this.theme = theme;
+    const seed = levelId * 977 + theme.id.length * 31;
+
+    this.atmosphere(theme, seed);
 
     // ground, run-off and walls
     const back = 30;
@@ -328,6 +335,126 @@ export class World {
       this.group.add(mesh);
       this.ambient = { mesh, pos, vel, kind: a.kind };
     }
+  }
+
+  private roof: THREE.Mesh | null = null;
+
+  /** Build a siege arena: a fixed floor with walls on three sides, the nest roof at the back and a danger line at the bottom. */
+  applyArena(theme: Theme, level: { id: number; arena?: import('../sim/level').ArenaDef }) {
+    const arena = level.arena!;
+    this.clear();
+    this.theme = theme;
+    const seed = level.id * 977 + theme.id.length * 31;
+    this.atmosphere(theme, seed);
+    this.scene.fog = new THREE.Fog(theme.fog, 75, 190); // the arena is seen from afar: keep the nest clear of haze
+    this.roof = null;
+    const half = arena.half;
+    const d = arena.depth;
+    const span = d + 22;
+    const centreZ = -(d - 6) / 2; // floor from y = -8 to y = d + 14 (z = -y)
+    const floorTex = laneTexture(theme, seed, true);
+    floorTex.repeat.set((half * 2 + 8) / 8, span / 8);
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(half * 2 + 8, span), new THREE.MeshLambertMaterial({ map: floorTex }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(0, 0, centreZ);
+    this.group.add(floor);
+    const out = outerTexture(theme, seed + 5);
+    out.repeat.set(12, span / 10);
+    const outer = new THREE.Mesh(new THREE.PlaneGeometry(260, span + 200), new THREE.MeshLambertMaterial({ map: out }));
+    outer.rotation.x = -Math.PI / 2;
+    outer.position.set(0, -0.05, centreZ);
+    this.group.add(outer);
+
+    // the playing field is the lighter slab inside the walls
+    const field = new THREE.Mesh(new THREE.PlaneGeometry(half * 2, d - arena.bottom + 4), new THREE.MeshLambertMaterial({ color: new THREE.Color(theme.groundA).multiplyScalar(1.04), transparent: true, opacity: 0.55 }));
+    field.rotation.x = -Math.PI / 2;
+    field.position.set(0, 0.012, -((d + arena.bottom) / 2));
+    this.group.add(field);
+
+    // walls: left, right and back (the bottom is open: that is where enemies must not arrive)
+    const wallLen = d - arena.bottom + 6;
+    const wallGeo = mergeGeometries(
+      [
+        new THREE.BoxGeometry(0.6, 0.8, wallLen).translate(-(half + 0.3), 0.4, -((d + arena.bottom) / 2)),
+        new THREE.BoxGeometry(0.6, 0.8, wallLen).translate(half + 0.3, 0.4, -((d + arena.bottom) / 2)),
+        new THREE.BoxGeometry(half * 2 + 1.2, 2.2, 0.8).translate(0, 1.1, -(d + 2.4)),
+      ],
+      false,
+    )!;
+    this.group.add(new THREE.Mesh(wallGeo, toonColor(theme.wall)));
+
+    // the danger line: an enemy that reaches it costs lives
+    const line = new THREE.Mesh(
+      new THREE.PlaneGeometry(half * 2, 1.1),
+      new THREE.MeshBasicMaterial({ color: 0xff3a3a, transparent: true, opacity: 0.3, depthWrite: false }),
+    );
+    line.rotation.x = -Math.PI / 2;
+    line.position.set(0, 0.03, -(arena.bottom + 0.2));
+    this.group.add(line);
+
+    // the nest: a dark floor patch under a huge roof of reward tiles
+    const cave = new THREE.Mesh(new THREE.PlaneGeometry(half * 2, 9), new THREE.MeshBasicMaterial({ color: 0x3a1820, transparent: true, opacity: 0.6, depthWrite: false }));
+    cave.rotation.x = -Math.PI / 2;
+    cave.position.set(0, 0.025, -(d - 3.6));
+    this.group.add(cave);
+    const roof = new THREE.Mesh(M.arenaRoofGeometry(half * 2 + 0.6), propMaterial());
+    roof.position.set(0, 0, -(d - 5));
+    this.group.add(roof);
+    this.roof = roof;
+
+    // posts along the side walls
+    const rows = Math.floor(wallLen / 5);
+    const posts = new THREE.InstancedMesh(M.postGeometry(theme.postBody, theme.postCap), propMaterial(), rows * 2);
+    const dd = new THREE.Object3D();
+    for (let i = 0; i < rows * 2; i++) {
+      dd.position.set((i % 2 ? 1 : -1) * (half + 0.3), 0.6, -(arena.bottom - 2 + Math.floor(i / 2) * 5));
+      dd.rotation.set(0, 0, 0);
+      dd.scale.setScalar(1);
+      dd.updateMatrix();
+      posts.setMatrixAt(i, dd.matrix);
+    }
+    posts.frustumCulled = false;
+    this.group.add(posts);
+
+    // scenery outside the walls
+    const rng = new Rng(seed + 11);
+    for (const spec of theme.decor) {
+      const n = Math.max(6, Math.round(spec.n * 0.3));
+      const mesh = new THREE.InstancedMesh(decorGeometry(spec.kind), propMaterial(), n);
+      const col = new THREE.Color();
+      for (let i = 0; i < n; i++) {
+        const side = rng.next() < 0.5 ? -1 : 1;
+        dd.position.set(side * rng.range(half + 2 + spec.minX - 4.9, half + 2 + spec.maxX - 4.9 + 8), 0, -rng.range(-8, d + 12));
+        dd.rotation.set(0, rng.range(0, 6.28), 0);
+        dd.scale.setScalar(rng.range(spec.scale[0], spec.scale[1]));
+        dd.updateMatrix();
+        mesh.setMatrixAt(i, dd.matrix);
+        const v = 0.86 + rng.next() * 0.22;
+        mesh.setColorAt(i, col.setRGB(v, v, v));
+      }
+      mesh.frustumCulled = false;
+      this.group.add(mesh);
+    }
+    if (theme.ambient) {
+      const a = theme.ambient;
+      const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: a.color, fog: false, transparent: true, opacity: 0.85 }), a.n);
+      mesh.frustumCulled = false;
+      const pos = new Float32Array(a.n * 3);
+      const vel = new Float32Array(a.n * 3);
+      for (let i = 0; i < a.n; i++) {
+        pos.set([rng.range(-16, 16), rng.range(0.3, 9), rng.range(-34, 6)], i * 3);
+        if (a.kind === 'snow') vel.set([rng.range(-0.4, 0.4), -rng.range(0.8, 1.6), rng.range(-0.2, 0.2)], i * 3);
+        else if (a.kind === 'embers') vel.set([rng.range(-0.5, 0.5), rng.range(0.8, 2.2), rng.range(-0.3, 0.3)], i * 3);
+        else vel.set([rng.range(1.5, 3.5), rng.range(-0.1, 0.2), rng.range(-0.3, 0.3)], i * 3);
+      }
+      this.group.add(mesh);
+      this.ambient = { mesh, pos, vel, kind: a.kind };
+    }
+  }
+
+  /** The roof comes down when the keystone breaks. */
+  collapseRoof() {
+    if (this.roof) this.roof.visible = false;
   }
 
   private buildFinish(theme: Theme, length: number) {

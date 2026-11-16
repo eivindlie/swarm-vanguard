@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { Game, gateLabel, type Barrel, type Block, type Counter, type Gate } from '../sim/game';
+import { Game, gateLabel, type Barrel, type Block, type Counter, type Gate, type Pickup } from '../sim/game';
 import { propMaterial } from './materials';
-import { barrelGeometry, blockGeometry, counterGeometry, gateFrameGeometry, rewardRoofGeometry, rubbleGeometry } from './models';
+import { barrelGeometry, blockGeometry, counterGeometry, gateFrameGeometry, keystoneGeometry, rewardRoofGeometry, rubbleGeometry, tileGeometry } from './models';
 
 // ------------------------------------------------------------------ textures
 
@@ -152,8 +152,45 @@ export class PropViews {
   private gates = new Map<number, GateView>();
   private barrels = new Map<number, BarrelView>();
   private time = 0;
+  private tilesSmall: THREE.InstancedMesh;
+  private tilesBig: THREE.InstancedMesh;
+  private tileDummy = new THREE.Object3D();
+  private pickupCount = 0;
 
-  constructor(private scene: THREE.Scene) {}
+  constructor(private scene: THREE.Scene) {
+    const mk = (gold: boolean) => {
+      const m = new THREE.InstancedMesh(tileGeometry(gold), propMaterial(), 120);
+      m.frustumCulled = false;
+      m.count = 0;
+      scene.add(m);
+      return m;
+    };
+    this.tilesSmall = mk(false);
+    this.tilesBig = mk(true);
+  }
+
+  /** Floor tiles of a siege: gentle bob and sway so they read as collectible. */
+  private syncPickups(pickups: Pickup[]) {
+    const d = this.tileDummy;
+    let s = 0;
+    let b = 0;
+    for (const p of pickups) {
+      const big = p.value >= 10;
+      const mesh = big ? this.tilesBig : this.tilesSmall;
+      const i = big ? b++ : s++;
+      if (i >= 120) continue;
+      d.position.set(p.x, 0.12 + Math.sin(this.time * 3 + p.id) * 0.07 + (big ? 0.1 : 0), -p.y);
+      d.rotation.set(0, Math.sin(this.time * 1.4 + p.id) * 0.3, 0);
+      d.scale.setScalar(big ? 1.7 : 1.15);
+      d.updateMatrix();
+      mesh.setMatrixAt(i, d.matrix);
+    }
+    this.tilesSmall.count = Math.min(120, s);
+    this.tilesBig.count = Math.min(120, b);
+    this.tilesSmall.instanceMatrix.needsUpdate = true;
+    this.tilesBig.instanceMatrix.needsUpdate = true;
+    this.pickupCount = pickups.length;
+  }
 
   update(game: Game, dt: number) {
     this.time += dt;
@@ -163,6 +200,7 @@ export class PropViews {
     this.syncCounters(game.counters, dt);
     this.syncGates(game.gates, dt);
     this.syncBarrels(game.barrels, dt);
+    this.syncPickups(game.pickups);
   }
 
   private syncBarrels(barrels: Barrel[], dt: number) {
@@ -255,7 +293,7 @@ export class PropViews {
     const special = b.reward.kind !== 'soldiers';
     const base = new THREE.Color(0xffffff); // vertex colours carry the palette; this tint darkens as HP falls
     const mat = propMaterial();
-    const body = new THREE.Mesh(blockGeometry(b.w, b.d, special), mat);
+    const body = new THREE.Mesh(b.keystone ? keystoneGeometry(b.w) : blockGeometry(b.w, b.d, special), mat);
     group.add(body);
     const rubble = new THREE.Mesh(rubbleGeometry(b.w), propMaterial());
     rubble.position.z = b.d / 2 - 0.2;
@@ -267,7 +305,7 @@ export class PropViews {
     crack.visible = false;
     group.add(crack);
     const giant = b.w >= 5; // lane-wide jackpot blocks get a big label
-    const { canvas, tex } = this.makeLabel(group, giant ? 5.6 : 2.35, giant ? -0.6 : b.d / 2, giant ? 1.55 : 1);
+    const { canvas, tex } = this.makeLabel(group, b.keystone ? 5.9 : giant ? 5.6 : 2.35, b.keystone ? 1 : giant ? -0.6 : b.d / 2, b.keystone || giant ? 1.55 : 1);
     group.position.set(b.x, 0, -b.y);
     this.scene.add(group);
     const v: BlockView = { group, body, mat, base, canvas, tex, crack, rubble, crackStage: 0, shown: '', lastHp: b.hp, pulse: 0 };
@@ -397,6 +435,6 @@ export class PropViews {
   }
 
   counts() {
-    return { blocks: this.blocks.size, gates: this.gates.size, counters: this.counters.size, barrels: this.barrels.size };
+    return { blocks: this.blocks.size, gates: this.gates.size, counters: this.counters.size, barrels: this.barrels.size, pickups: this.pickupCount };
   }
 }

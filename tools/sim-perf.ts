@@ -1,7 +1,7 @@
 // Simulation cost per tick during the biggest fights (swarm bonus levels), in milliseconds.
 import { LEVELS } from '../src/levels';
 import { Game } from '../src/sim/game';
-import { policies } from '../src/sim/bots';
+import { policies, toInput } from '../src/sim/bots';
 for (const id of [102, 104, 16]) {
   const level = LEVELS.find((l) => l.id === id)!;
   const g = new Game(level, 1);
@@ -9,7 +9,7 @@ for (const id of [102, 104, 16]) {
   let peakEnemies = 0;
   while (g.phase === 'playing' && g.tick < 20000) {
     const t0 = performance.now();
-    g.step({ targetX: policies.balanced(g) });
+    g.step(toInput(policies.balanced(g)));
     times.push(performance.now() - t0);
     peakEnemies = Math.max(peakEnemies, g.enemies.length);
   }

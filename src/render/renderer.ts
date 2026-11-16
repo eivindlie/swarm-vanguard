@@ -80,7 +80,9 @@ export class GameRenderer {
   /** Build the world for a level (theme, scenery, finish line). */
   setLevel(level: LevelDef) {
     const theme = this.themeOverride !== null ? THEMES[Math.max(0, Math.min(THEMES.length - 1, this.themeOverride))] : themeForLevel(level);
-    this.world.apply(theme, level.id, level.length);
+    if (level.arena) this.world.applyArena(theme, level);
+    else this.world.apply(theme, level.id, level.length);
+    this.crowd.setArena(level.arena ?? null);
     this.crowd.setBossVariant(theme.boss);
   }
 
@@ -93,6 +95,7 @@ export class GameRenderer {
     this.cascade.update(0, 0, 0);
     this.camX = 0;
     this.prevSqX = 0;
+    this.crowd.reset();
   }
 
   viewMismatches(game: Game): number {
@@ -166,6 +169,17 @@ export class GameRenderer {
         case 'squadHit':
           this.crowd.soldiersDied(e.lost, game);
           this.fx.burst(sq.x, sq.y, 0.5, Math.min(8, e.lost + 2), 0x7fb0ff, 2.5, 0.12, 0.45, 2.5);
+          break;
+        case 'pickup':
+          this.fx.burst(e.x, e.y, 0.5, e.value >= 10 ? 14 : 4, e.value >= 10 ? 0xffd23a : 0x6fb4ff, 3, 0.12, 0.5, 3);
+          break;
+        case 'collapse':
+          // the roof comes down
+          this.world.collapseRoof();
+          this.fx.burst(e.x, e.y, 2, 80, 0xb4bfce, 9, 0.3, 1.2, 5);
+          this.fx.burst(e.x, e.y, 2.5, 22, 0xe9dccb, 2.4, 0.9, 1.8, 1.5, 0.05);
+          this.addShake(0.7);
+          this.fovPulse = 1;
           break;
         case 'win':
           // confetti fountain over the squad
@@ -247,13 +261,21 @@ export class GameRenderer {
     this.shake = Math.max(0, this.shake - dt * 2.5);
     const jx = (Math.random() - 0.5) * sh * 0.4;
     const jy = (Math.random() - 0.5) * sh * 0.4;
-    this.camera.position.set(this.camX + jx, 11.8 * this.zoom + jy, -sq.y + 10.2 * this.zoom);
-    this.camera.lookAt(this.camX, 0, -sq.y - 11.5);
-    this.camera.rotateZ(-this.roll);
+    if (game.level.arena) {
+      // siege: the camera never follows the squad; it looks down at the whole arena
+      this.camera.position.set(jx, 21 + jy, 9);
+      this.camera.lookAt(0, 0, -11.5);
+    } else {
+      this.camera.position.set(this.camX + jx, 11.8 * this.zoom + jy, -sq.y + 10.2 * this.zoom);
+      this.camera.lookAt(this.camX, 0, -sq.y - 11.5);
+      this.camera.rotateZ(-this.roll);
+    }
 
     this.fovPulse = Math.max(0, this.fovPulse - dt * 3.2);
     const pulse = Math.sin(Math.min(1, this.fovPulse) * Math.PI * 0.5);
-    this.camera.fov = this.baseFov + pulse * 3.5;
+    // the lane fov is tuned to the lane width; a siege needs to fit the whole arena width instead
+    const baseFov = game.level.arena ? Math.min(75, ((2 * Math.atan(Math.tan((15.5 * Math.PI) / 180) / this.camera.aspect)) * 180) / Math.PI) : this.baseFov;
+    this.camera.fov = baseFov + pulse * 3.5;
     this.camera.updateProjectionMatrix();
 
     this.world.update(dt, this.camera);

@@ -4,7 +4,7 @@ import { policies, runBot } from './bot';
 const id = Number(process.argv[2] ?? 1);
 const names = Object.keys(policies);
 console.log('k'.padEnd(6) + names.map((n) => n.padEnd(15)).join(''));
-for (const k of [0.6, 1, 1.4, 1.8, 2.4, 3.2, 4.5, 6]) {
+for (const k of [0.6, 1, 2, 3, 4.5, 6, 10]) {
   const level = makeLevels({ [id]: k }).find((l) => l.id === id)!;
   let row = String(k).padEnd(6);
   for (const n of names) {

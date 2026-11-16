@@ -100,6 +100,14 @@ export class Sfx {
     const blips = Math.min(26, Math.max(6, Math.round(n / 4)));
     for (let i = 0; i < blips; i++) this.tone(380 * Math.pow(1.0595, Math.min(i, 24)), 0.06, 'triangle', 0.07, undefined, i * 0.03);
   }
+  /** A floor tile collected: a small rising blip. */
+  pickup(value: number) {
+    if (this.ok('pickup', 0.045)) this.tone(value >= 10 ? 880 : 660 + Math.random() * 120, 0.06, 'triangle', 0.08);
+  }
+  /** The nest sends a wave. */
+  horn() {
+    if (this.ok('horn', 1.2)) this.tone(110, 0.5, 'sawtooth', 0.12, 80);
+  }
   squadHit() { if (this.ok('squadhit', 0.08)) this.tone(160, 0.1, 'sawtooth', 0.08, 90); }
   win() {
     if (!this.ctx || this.muted) return;

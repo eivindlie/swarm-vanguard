@@ -10,16 +10,20 @@ const MIN_BAL = Number(process.argv[2] ?? 0.8);
 const SEEDS = 24;
 const SAFETY = 0.8;
 const GRID = Array.from({ length: 26 }, (_, i) => Math.round(0.2 * Math.pow(1.17, i) * 100) / 100); // 0.2 .. ~10
-const names = ['balanced', 'naive', 'pure-fight', 'greedy-expand'] as const;
+const names: string[] = ['balanced', 'naive', 'pure-fight', 'greedy-expand'];
 // optional 2nd argument: only re-tune these ids (comma separated); the rest of tuned.json is kept
 const only = process.argv[3]?.split(',').map(Number);
 // level 1 is the hand-tuned tutorial: it is only re-tuned if asked for explicitly
+// Only the regular levels are auto-tuned. Bonus levels stay at k = 1, and sieges are sized by hand: their length is part
+// of the design (a keystone with k x HP takes ~k x 37 s), so "as hard as the bots can take" would give 3-minute sieges.
+// Ask for a siege explicitly (`tune.ts 0.8 201`) to see where its cliff is.
 const IDS = only ?? Array.from({ length: LEVEL_COUNT - 1 }, (_, i) => i + 2);
 
 function rates(id: number, k: number): Record<string, number> {
   const level = makeLevels({ [id]: k }).find((l) => l.id === id)!;
   const r: Record<string, number> = {};
-  for (const n of names) {
+  // in a siege, parking under the pillar is the other way of "standing still": it must lose as well
+  for (const n of level.arena ? [...names, 'park'] : names) {
     let w = 0;
     for (let s = 1; s <= SEEDS; s++) if (runBot(level, s, policies[n]).won) w++;
     r[n] = w / SEEDS;
@@ -38,7 +42,7 @@ for (const id of IDS) {
 
   // preferred tiers: the hardest k where standing still fails and balanced play is still safe
   for (const minBal of [0.95, 0.85]) {
-    const ok = table.filter((t) => t.r.naive <= 0.25 && t.r.balanced >= minBal);
+    const ok = table.filter((t) => t.r.naive <= 0.25 && (t.r.park ?? 0) <= 0.25 && t.r.balanced >= minBal);
     if (ok.length) {
       const t = ok[ok.length - 1];
       chosen = { k: t.k, why: describe(t.r) };

@@ -81,6 +81,13 @@ export interface Block {
   hp: number;
   maxHp: number;
   reward: BlockReward;
+  keystone?: boolean; // siege levels: destroying it wins the level
+}
+export interface Pickup {
+  id: number;
+  x: number;
+  y: number;
+  value: number;
 }
 export interface Counter {
   id: number;
@@ -117,6 +124,9 @@ export type GameEvent =
   | { t: 'blockHit'; x: number; y: number }
   | { t: 'counterHit'; x: number; y: number }
   | { t: 'barrelHit'; x: number; y: number }
+  | { t: 'pickup'; x: number; y: number; value: number }
+  | { t: 'collapse'; x: number; y: number }
+  | { t: 'wave'; count: number }
   | { t: 'bossAdds'; x: number; y: number }
   | { t: 'blockBreak'; x: number; y: number; label: string; big: boolean; gain: number }
   | { t: 'gate'; x: number; y: number; delta: number; label: string }
@@ -131,6 +141,8 @@ export type Phase = 'playing' | 'won' | 'lost';
 
 export interface Input {
   targetX: number;
+  /** Siege levels only: where the squad wants to stand along the arena. Lane levels ignore it. */
+  targetY?: number;
 }
 
 /** Soldiers a reward grants (used by the renderer to size the tile cascade). */
@@ -178,6 +190,7 @@ export class Game {
   gates: Gate[] = [];
   counters: Counter[] = [];
   barrels: Barrel[] = [];
+  pickups: Pickup[] = [];
   events: GameEvent[] = [];
   kills = 0;
   weapon: WeaponType = 'rifle';
@@ -185,6 +198,10 @@ export class Game {
   private grindAcc = 0;
   private held = false; // an elite is touching the squad: the squad cannot advance
   private bossPhase = 0;
+  private waves: Extract<LevelDef['spawns'][number], { t: 'wave' }>[] = [];
+  private waveIdx = 0;
+  private escalations = 0;
+  private keystoneDown = false;
   private nextId = 1;
   private spawnIdx = 0;
   private pendingSpawns: LevelDef['spawns'];
@@ -195,11 +212,17 @@ export class Game {
     this.level = level;
     this.rng = new Rng(seed);
     this.mods = [...mods];
-    this.pendingSpawns = [...level.spawns].sort((a, b) => a.y - b.y);
+    // timed waves are handled separately; everything else is placed by position (streamed in ahead of the squad)
+    this.waves = level.spawns.filter((s): s is Extract<LevelDef['spawns'][number], { t: 'wave' }> => s.t === 'wave').sort((a, b) => a.at - b.at);
+    this.pendingSpawns = level.spawns.filter((s) => s.t !== 'wave').sort((a, b) => spawnY(a) - spawnY(b));
     const start = Math.round(computeStat('startSize', this.mods));
     this.squad.count = start;
     this.squad.startCount = start;
     this.squad.maxCount = start;
+    if (level.arena) {
+      this.squad.x = level.arena.startX;
+      this.squad.y = level.arena.startY;
+    }
     // Pre-spawn everything near the start; the rest streams in ahead of the squad.
     this.streamSpawns();
   }
@@ -214,7 +237,26 @@ export class Game {
 
   /** How far the squad centre can move sideways (shrinks as the crowd widens). */
   maxX(): number {
-    return Math.max(2.2, LANE_HALF - this.halfWidth() * 0.7);
+    return Math.max(2.2, this.laneHalf() - this.halfWidth() * 0.7);
+  }
+
+  /** Half-width of the playfield: the lane, or the arena. */
+  laneHalf(): number {
+    return this.level.arena?.half ?? LANE_HALF;
+  }
+
+  /** The keystone block of a siege level (undefined in lane levels or once destroyed). */
+  get keystone(): Block | undefined {
+    return this.blocks.find((b) => b.keystone && b.hp > 0);
+  }
+
+  /** Enemies still to come (scheduled waves plus the next escalation): drives the visible mass under the roof. */
+  reserve(): number {
+    let n = 0;
+    for (let i = this.waveIdx; i < this.waves.length; i++) n += this.waves[i].count;
+    const arena = this.level.arena;
+    if (arena && this.waveIdx >= this.waves.length) n += Math.round(arena.escalate.count * Math.pow(arena.escalate.growth, this.escalations));
+    return n;
   }
 
   halfWidth(): number {
@@ -227,7 +269,7 @@ export class Game {
 
   private streamSpawns(): void {
     const horizon = this.squad.y + 70;
-    while (this.spawnIdx < this.pendingSpawns.length && this.pendingSpawns[this.spawnIdx].y <= horizon) {
+    while (this.spawnIdx < this.pendingSpawns.length && spawnY(this.pendingSpawns[this.spawnIdx]) <= horizon) {
       this.spawn(this.pendingSpawns[this.spawnIdx++]);
     }
   }
@@ -237,8 +279,11 @@ export class Game {
     this.spawn({ t: 'enemies', y: this.squad.y + ahead, x: 0, spreadX: LANE_HALF - 0.4, spreadY, count, kind });
   }
 
-  private spawn(s: LevelDef['spawns'][number]): void {
-    if (s.t === 'enemies') {
+  private spawn(s: LevelDef['spawns'][number], awake = false): void {
+    if (s.t === 'wave') return; // waves go through spawnWave()
+    if (s.t === 'tile') {
+      this.pickups.push({ id: this.nextId++, x: s.x, y: s.y, value: s.value });
+    } else if (s.t === 'enemies') {
       const def = ENEMY_DEFS[s.kind];
       // grid = a packed, slightly jittered carpet (the "endless red mass"); otherwise a loose random scatter
       const sp = 0.55;
@@ -249,11 +294,11 @@ export class Game {
         this.enemies.push({
           id: this.nextId++,
           kind: s.kind,
-          x: clamp(s.grid ? gx : s.x + this.rng.range(-s.spreadX, s.spreadX), -LANE_HALF + 0.3, LANE_HALF - 0.3),
+          x: clamp(s.grid ? gx : s.x + this.rng.range(-s.spreadX, s.spreadX), -this.laneHalf() + 0.3, this.laneHalf() - 0.3),
           y: s.grid ? gy : s.y + this.rng.range(0, s.spreadY),
           hp: s.hp ?? def.hp * (this.level.hpMul ?? 1),
           maxHp: s.hp ?? def.hp * (this.level.hpMul ?? 1),
-          awake: false,
+          awake,
           wobble: this.rng.range(0, 6.28),
         });
       }
@@ -267,7 +312,7 @@ export class Game {
       this.gates.push({ id: this.nextId++, pair, x: LANE_HALF / 2, y: s.y, w: LANE_HALF, side: s.right, used: false });
     } else {
       this.blocks.push({
-        id: this.nextId++, x: s.x, y: s.y, w: s.w, d: 1.2, hp: s.hp, maxHp: s.hp, reward: s.reward,
+        id: this.nextId++, x: s.x, y: s.y, w: s.w, d: s.keystone ? 1.8 : 1.2, hp: s.hp, maxHp: s.hp, reward: s.reward, keystone: s.keystone,
       });
     }
   }
@@ -293,26 +338,34 @@ export class Game {
     this.tick++;
     const sq = this.squad;
 
-    // --- squad lateral movement (clamped to lane) ---
+    // --- squad lateral movement (clamped to the lane / arena) ---
     const maxX = this.maxX();
     const tx = clamp(input.targetX, -maxX, maxX);
     const dx = tx - sq.x;
     sq.x += clamp(dx, -LATERAL_SPEED * DT, LATERAL_SPEED * DT);
     sq.x = clamp(sq.x, -maxX, maxX);
 
-    // --- forward movement, blocked by intact blocks directly ahead ---
-    let blocked = false;
-    const rr = this.halfWidth() * 0.6;
-    for (const b of this.blocks) {
-      const ahead = b.y - sq.y;
-      if (ahead > -0.2 && ahead < 1.2 && Math.abs(b.x - sq.x) < b.w / 2 + rr) {
-        blocked = true;
-        break;
+    const arena = this.level.arena;
+    if (arena) {
+      // siege: the screen is fixed; the squad walks freely up and down and the nest sends timed waves
+      const ty = clamp(input.targetY ?? sq.y, arena.minY, arena.maxY);
+      sq.y = clamp(sq.y + clamp(ty - sq.y, -LATERAL_SPEED * DT, LATERAL_SPEED * DT), arena.minY, arena.maxY);
+      this.spawnWaves();
+    } else {
+      // --- forward movement, blocked by intact blocks directly ahead ---
+      let blocked = false;
+      const rr = this.halfWidth() * 0.6;
+      for (const b of this.blocks) {
+        const ahead = b.y - sq.y;
+        if (ahead > -0.2 && ahead < 1.2 && Math.abs(b.x - sq.x) < b.w / 2 + rr) {
+          blocked = true;
+          break;
+        }
       }
+      // the squad halts at the finish line until the boss is dead
+      const bossAlive = this.enemies.some((e) => e.kind === 'boss' && e.hp > 0);
+      if (!blocked && !this.held && !(sq.y >= this.level.length && bossAlive)) sq.y += FORWARD_SPEED * DT;
     }
-    // the squad halts at the finish line until the boss is dead
-    const bossAlive = this.enemies.some((e) => e.kind === 'boss' && e.hp > 0);
-    if (!blocked && !this.held && !(sq.y >= this.level.length && bossAlive)) sq.y += FORWARD_SPEED * DT;
 
     this.streamSpawns();
 
@@ -331,6 +384,7 @@ export class Game {
     this.contacts();
     this.gateChecks();
     this.counterChecks();
+    this.pickupChecks();
     this.cleanup();
 
     // --- end conditions ---
@@ -338,7 +392,7 @@ export class Game {
       sq.count = 0;
       this.phase = 'lost';
       this.events.push({ t: 'lose' });
-    } else if (sq.y >= this.level.length && !this.enemies.some((e) => e.kind === 'boss')) {
+    } else if (arena ? this.keystoneDown : sq.y >= this.level.length && !this.enemies.some((e) => e.kind === 'boss')) {
       this.phase = 'won';
       this.events.push({ t: 'win' });
     }
@@ -461,7 +515,7 @@ export class Game {
           this.enemies.push({
             id: this.nextId++,
             kind: 'mini',
-            x: clamp(e.x + (i - 1) * 0.45 + this.rng.range(-0.1, 0.1), -LANE_HALF + 0.3, LANE_HALF - 0.3),
+            x: clamp(e.x + (i - 1) * 0.45 + this.rng.range(-0.1, 0.1), -this.laneHalf() + 0.3, this.laneHalf() - 0.3),
             y: e.y + this.rng.range(-0.2, 0.4),
             hp,
             maxHp: hp,
@@ -517,7 +571,7 @@ export class Game {
   private bulletCollisions(): void {
     for (const b of this.bullets) {
       if (b.pierce <= 0) continue;
-      if (this.tick - b.born > b.maxAge || b.x < -LANE_HALF - 2 || b.x > LANE_HALF + 2) {
+      if (this.tick - b.born > b.maxAge || b.x < -this.laneHalf() - 2 || b.x > this.laneHalf() + 2) {
         b.pierce = 0;
         continue;
       }
@@ -580,6 +634,17 @@ export class Game {
     this.applyReward(r);
     const label = r.kind === 'soldiers' ? `+${r.n}` : r.label;
     this.events.push({ t: 'blockBreak', x: bl.x, y: bl.y, label, big: bl.maxHp >= 300, gain: soldiersIn(r) });
+    if (bl.keystone) {
+      // the roof comes down: everything still alive is crushed and the level is won
+      this.keystoneDown = true;
+      this.events.push({ t: 'collapse', x: bl.x, y: bl.y });
+      let shown = 0;
+      for (const e of this.enemies) {
+        if (e.hp <= 0) continue;
+        e.hp = 0;
+        if (shown++ < 160) this.events.push({ t: 'kill', x: e.x, y: e.y, kind: e.kind, id: e.id });
+      }
+    }
   }
 
   private applyReward(r: BlockReward): void {
@@ -627,9 +692,9 @@ export class Game {
           this.events.push({ t: 'kill', x: e.x, y: e.y, kind: e.kind, id: e.id });
           this.events.push({ t: 'squadHit', lost: def.contactDmg });
         }
-      } else if (e.y < sq.y - hd - 1.2) {
+      } else if (e.y < (this.level.arena ? this.level.arena.bottom : sq.y - hd - 1.2)) {
         // slipped past the squad: it reaches the bottom of the screen and costs lives
-        this.events.push({ t: 'leak', x: e.x, y: sq.y - hd - 1.2 });
+        this.events.push({ t: 'leak', x: e.x, y: this.level.arena ? this.level.arena.bottom : sq.y - hd - 1.2 });
         if (e.kind === 'boss') {
           this.events.push({ t: 'squadHit', lost: sq.count });
           sq.count = 0;
@@ -681,8 +746,60 @@ export class Game {
     }
   }
 
+  /** Timed waves of a siege, then ever bigger ones, so a run always ends (the squad breaks the keystone or is overrun). */
+  private spawnWaves(): void {
+    const arena = this.level.arena!;
+    while (this.waveIdx < this.waves.length && this.time >= this.waves[this.waveIdx].at) {
+      const w = this.waves[this.waveIdx++];
+      this.emitWave(w.count, w.kind, w.x ?? 0, w.spreadX ?? arena.half - 1.4, w.hp);
+    }
+    if (this.waveIdx >= this.waves.length && arena.escalate) {
+      const last = this.waves.length ? this.waves[this.waves.length - 1].at : 0;
+      const due = last + arena.escalate.every * (this.escalations + 1);
+      if (this.time >= due) {
+        const n = Math.round(arena.escalate.count * Math.pow(arena.escalate.growth, this.escalations));
+        this.escalations++;
+        this.emitWave(n, arena.escalate.kind, 0, arena.half - 1.4);
+      }
+    }
+  }
+
+  private emitWave(count: number, kind: EnemyKind, x: number, spreadX: number, hp?: number): void {
+    const arena = this.level.arena!;
+    // a packed carpet that starts just under the roof and walks south, awake
+    this.spawn({ t: 'enemies', y: arena.depth - 1.6, x, spreadX, spreadY: 4, count, kind, hp, grid: true }, true);
+    this.events.push({ t: 'wave', count });
+  }
+
+  private pickupChecks(): void {
+    if (!this.pickups.length) return;
+    const sq = this.squad;
+    const ax = this.halfWidth() + 0.45;
+    const ay = this.halfDepth() + 0.45;
+    for (let i = this.pickups.length - 1; i >= 0; i--) {
+      const p = this.pickups[i];
+      const dx = (p.x - sq.x) / ax;
+      const dy = (p.y - sq.y) / ay;
+      if (dx * dx + dy * dy < 1) {
+        sq.count = Math.min(MAX_SQUAD, sq.count + p.value);
+        sq.maxCount = Math.max(sq.maxCount, sq.count);
+        this.events.push({ t: 'pickup', x: p.x, y: p.y, value: p.value });
+        this.pickups.splice(i, 1);
+      }
+    }
+  }
+
   private cleanup(): void {
     const sq = this.squad;
+    if (this.level.arena) {
+      // nothing is culled by position in a siege: the squad can walk back to anything
+      this.enemies = this.enemies.filter((e) => e.hp > 0);
+      this.bullets = this.bullets.filter((b) => b.pierce > 0);
+      this.blocks = this.blocks.filter((b) => b.hp > 0);
+      this.counters = this.counters.filter((c) => c.value > 0);
+      this.barrels = this.barrels.filter((b) => b.hp > 0);
+      return;
+    }
     this.enemies = this.enemies.filter((e) => e.hp > 0 && e.y > sq.y - 14);
     this.bullets = this.bullets.filter((b) => b.pierce > 0);
     this.blocks = this.blocks.filter((b) => b.hp > 0 && b.y > sq.y - 3);
@@ -706,6 +823,11 @@ export class Game {
       kills: this.kills,
     };
   }
+}
+
+/** Position used to order spawns (waves have none and are filtered out before sorting). */
+function spawnY(s: LevelDef['spawns'][number]): number {
+  return s.t === 'wave' ? 0 : s.y;
 }
 
 function clamp(v: number, a: number, b: number): number {

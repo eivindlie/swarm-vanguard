@@ -29,6 +29,19 @@ after each commit** (the user has said this is fine). Pushing to `main` deploys 
   "Not now" for a week; only on the menu). Layout uses `--sat/--sab` (safe-area insets) so the HUD clears the iPhone notch.
 - Hosted on GitHub Pages under `/swarm-vanguard/`; `base` is relative, so keep all asset paths relative (`./icons/...`).
 
+## Siege (arena) levels
+- `level.arena` (see `ArenaDef` in `src/sim/level.ts`) switches on every arena rule in `sim/game.ts`; lane levels never take those
+  branches (proven by an identical `npm run balance`). Fixed camera, free 2D movement (`Input.targetY`), timed `wave` spawns that
+  start awake, a fixed bottom leak line, `tile` pickups, and a `keystone` block whose destruction wins (`collapse` event).
+- `src/levels/siege.ts` builds the four sieges (ids 201-204, `bonus: 'siege'`, placed after each world's jackpot/swarm level).
+  Difficulty `k` scales the **keystone HP** (time is the difficulty: escalating waves are the clock); sieges are sized by hand and
+  skipped by `tune.ts`. `npx tsx tools/siege-check.ts <id>` runs every policy through one and checks that all runs end.
+- Bots: `policies[name]` dispatches to a siege version when `g.level.arena` is set (`park` = stand under the pillar). In a siege
+  both `naive` and `park` must lose. Always feed the sim through `toInput(policy(g))`.
+- Render: `world.applyArena`, a static camera in `renderer.render`, `crowd.setArena` (decorative mass under the roof sized by
+  `game.reserve()`), keystone/tiles in `props.ts`, keystone bar in the HUD, `Controls.yRange` for vertical drag/WASD.
+- Progress is derived from cleared levels (save v2, `unlockedCount` in `meta/save.ts`), so inserting levels never shifts it.
+
 ## Architecture (the rule that matters)
 - `src/sim/` is a **deterministic fixed-step (60 Hz) simulation with no three.js/DOM imports**. The same code runs in
   the browser and headless in Node (bots, tuner, tests). Never import render/DOM code into `src/sim`.
@@ -43,7 +56,7 @@ after each commit** (the user has said this is fine). Pushing to `main` deploys 
 - **Render-only changes must leave `npm run balance` output identical.** Sim changes go in one batch, then one retune.
 - Any new sim mechanic must be playable by `balanced` bot without a new skill, and `k` (horde multiplier in
   `LevelBuilder`) must scale it, otherwise the tuner collapses to the grid floor. The tuner and bots use **zero** shop upgrades.
-- Levels are addressed by **id** (bonus levels are 101+); `levelIdx`/array position is play order. Tools must use
+- Levels are addressed by **id** (jackpot/swarm bonus levels 101-104, sieges 201-204); `levelIdx`/array position is play order. Tools must use
   `LEVELS.find(l => l.id === id)`, never `LEVELS[id - 1]`.
 - Bullets must spawn in front of a block ahead, or deep crowds shoot over it (regression test exists).
 - Hordes placed right after a shoot-block must sit on the opposite side, or the pinned squad is overrun.

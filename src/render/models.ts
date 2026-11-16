@@ -500,7 +500,7 @@ export function rewardRoofGeometry(w: number): THREE.BufferGeometry {
     const parts: Part[] = [];
     const cols = Math.max(4, Math.floor(w / 0.62));
     const rows = 7;
-    const tilt = -0.95; // leans back, like a ramp rising away from the camera
+    const tilt = 0.95; // leans back, like a ramp rising away from the camera
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const x = (c - (cols - 1) / 2) * (w / cols);
@@ -579,4 +579,54 @@ export function eliteGeometry(): THREE.BufferGeometry {
     { geo: cyl(0.07, 0.07, 1.3), color: 0x5a3a22, pos: [0.7, 0.7, -0.34], rot: [-0.5, 0, 0], part: PART.armR, pivot: [0.64, 1.3, 0] }, // hammer handle
     { geo: box(0.55, 0.4, 0.4), color: 0x9aa3b2, pos: [0.7, 1.25, -0.72], part: PART.armR, pivot: [0.64, 1.3, 0] }, // hammer head
   ]);
+}
+
+// ------------------------------------------------------------------------ siege
+
+/** The nest roof: a huge slanted deck of +N tiles that rises away from the camera towards the back wall. */
+export function arenaRoofGeometry(w: number, rows = 15): THREE.BufferGeometry {
+  return cached(`arenaRoof|${w}|${rows}`, () => {
+    const parts: Part[] = [];
+    const cols = Math.max(6, Math.floor(w / 0.62));
+    const tilt = 0.78; // tiles lean the way the deck rises: away from the camera
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = (c - (cols - 1) / 2) * (w / cols);
+        const gold = c >= cols - 3 && r % 2 === 0;
+        parts.push({
+          geo: box(w / cols - 0.07, 0.07, 0.36),
+          color: gold ? 0xffc21a : r % 2 ? 0x2f7bff : 0x4a90ff,
+          pos: [x, 3.0 + r * 0.3, -r * 0.34],
+          rot: [tilt, 0, 0],
+        });
+      }
+    }
+    parts.push({ geo: box(w + 0.4, 0.14, rows * 0.34 + 1), color: 0x7d8594, pos: [0, 3.0 + (rows * 0.3) / 2 - 0.2, -(rows * 0.34) / 2], rot: [tilt, 0, 0] });
+    return build(parts);
+  });
+}
+
+/** The keystone: a tall stone pillar with banded shaft and capital (the thing that holds the roof up). */
+export function keystoneGeometry(w: number, h = 3.2): THREE.BufferGeometry {
+  return cached(`keystone|${w}|${h}`, () =>
+    build([
+      { geo: box(w + 0.7, 0.55, 1.9), color: 0x7e8696, pos: [0, 0.28, 0] },
+      { geo: box(w, h, 1.5), color: 0xa7afbd, pos: [0, h / 2 + 0.5, 0] },
+      { geo: box(w + 0.18, 0.3, 1.64), color: 0x6c7484, pos: [0, 1.6, 0] },
+      { geo: box(w + 0.18, 0.3, 1.64), color: 0x6c7484, pos: [0, h * 0.55, 0] },
+      { geo: box(w + 0.8, 0.5, 2.0), color: 0xc4cbd8, pos: [0, h + 0.75, 0] },
+    ]),
+  );
+}
+
+/** A floor tile you collect by walking over it: blue slab with a white + (a gold one for the big pickups). */
+export function tileGeometry(gold = false): THREE.BufferGeometry {
+  return cached(`tile|${gold}`, () =>
+    build([
+      { geo: box(0.86, 0.1, 0.62), color: gold ? 0xffc21a : 0x2f7bff, pos: [0, 0.05, 0] },
+      { geo: box(0.9, 0.06, 0.66), color: gold ? 0xb98200 : 0x1d4fb0, pos: [0, 0.02, 0] },
+      { geo: box(0.46, 0.04, 0.1), color: 0xffffff, pos: [0, 0.12, 0] },
+      { geo: box(0.1, 0.04, 0.34), color: 0xffffff, pos: [0, 0.12, 0] },
+    ]),
+  );
 }

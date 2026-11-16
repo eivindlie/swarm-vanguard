@@ -1,6 +1,12 @@
-import { Game, LANE_HALF, gateScore, type Gate } from './game';
+import { Game, LANE_HALF, gateScore, type Enemy, type Gate, type Input } from './game';
 
-export type Policy = (g: Game) => number;
+/** Lane levels steer with an x only; siege levels need x and y. */
+export type Decision = number | { x: number; y: number };
+export type Policy = (g: Game) => Decision;
+
+export function toInput(d: Decision): Input {
+  return typeof d === 'number' ? { targetX: d } : { targetX: d.x, targetY: d.y };
+}
 
 const clampX = (x: number) => Math.max(-LANE_HALF + 0.6, Math.min(LANE_HALF - 0.6, x));
 
@@ -41,7 +47,7 @@ function bestGateX(g: Game, pair: Gate[]): number {
   return bestX;
 }
 
-export const policies: Record<string, Policy> = {
+const lanePolicies: Record<string, (g: Game) => number> = {
   /** Stands still in the middle. */
   naive: () => 0,
 
@@ -78,3 +84,74 @@ export const policies: Record<string, Policy> = {
   },
 };
 
+
+// ------------------------------------------------------------------------------------------------ siege (arena)
+
+const arenaOf = (g: Game) => g.level.arena!;
+const holdY = (g: Game) => arenaOf(g).minY + 1.4;
+const keystoneX = (g: Game) => g.keystone?.x ?? 0;
+const clampAX = (g: Game, x: number) => Math.max(-arenaOf(g).half + 0.8, Math.min(arenaOf(g).half - 0.8, x));
+
+/** Enemies ahead of the squad (still to be dealt with) within `range`. */
+function threats(g: Game, range: number): Enemy[] {
+  const sq = g.squad;
+  return g.enemies.filter((e) => e.hp > 0 && e.y > sq.y - 1 && e.y - sq.y < range);
+}
+
+const centroidX = (list: Enemy[]) => list.reduce((a, e) => a + e.x, 0) / Math.max(1, list.length);
+
+function nearestPickup(g: Game): { x: number; y: number } | null {
+  const sq = g.squad;
+  let best: { x: number; y: number } | null = null;
+  let bd = Infinity;
+  for (const p of g.pickups) {
+    // bigger tiles are worth a longer walk
+    const d = Math.hypot(p.x - sq.x, p.y - sq.y) / Math.sqrt(p.value);
+    if (d < bd) {
+      bd = d;
+      best = p;
+    }
+  }
+  return best;
+}
+
+const arenaPolicies: Record<string, (g: Game) => { x: number; y: number }> = {
+  /** Stands where it starts and shoots straight ahead. */
+  naive: (g) => ({ x: arenaOf(g).startX, y: arenaOf(g).startY }),
+
+  /** Parks under the pillar and just shoots it: the "stand still" of a siege. Must lose, or movement is decoration. */
+  park: (g) => ({ x: keystoneX(g), y: holdY(g) }),
+
+  /** Only fights the incoming waves; never collects anything. */
+  'pure-fight': (g) => {
+    const t = threats(g, 16);
+    return { x: clampAX(g, t.length ? centroidX(t) : keystoneX(g)), y: holdY(g) };
+  },
+
+  /** Only collects tiles, then shoots the pillar; ignores the waves. */
+  'greedy-expand': (g) => {
+    const tile = nearestPickup(g);
+    return tile ? { x: tile.x, y: tile.y } : { x: keystoneX(g), y: holdY(g) };
+  },
+
+  /** Defends when a wave is about to reach it, otherwise grabs tiles, otherwise works on the pillar. */
+  balanced: (g) => {
+    const sq = g.squad;
+    const near = threats(g, 11);
+    if (near.length >= Math.max(4, sq.count * 0.25)) return { x: clampAX(g, centroidX(near)), y: holdY(g) };
+    const tile = nearestPickup(g);
+    // a tile is worth the detour only while no wave is close behind it
+    if (tile && threats(g, 8).length < 3) return { x: tile.x, y: Math.min(tile.y, arenaOf(g).maxY) };
+    const far = threats(g, 20);
+    if (far.length >= 8) return { x: clampAX(g, centroidX(far)), y: holdY(g) };
+    return { x: keystoneX(g), y: holdY(g) };
+  },
+};
+
+/** All policies by name; each one dispatches to its lane or siege version depending on the level. */
+export const policies: Record<string, Policy> = {};
+for (const name of new Set([...Object.keys(lanePolicies), ...Object.keys(arenaPolicies)])) {
+  const lane = lanePolicies[name] ?? lanePolicies.naive; // "park" has no lane meaning: it is plain standing still
+  const arena = arenaPolicies[name];
+  policies[name] = (g) => (g.level.arena && arena ? arena(g) : lane(g));
+}

@@ -2,6 +2,7 @@
 import { makeLevels } from '../src/levels';
 import { Game } from '../src/sim/game';
 import { policies } from './bot';
+import { toInput } from '../src/sim/bots';
 
 const id = Number(process.argv[2] ?? 4);
 const seed = Number(process.argv[3] ?? 1);
@@ -13,7 +14,7 @@ for (const name of Object.keys(policies)) {
   const samples: string[] = [];
   let boss = '';
   while (g.phase === 'playing' && g.tick < 20000) {
-    g.step({ targetX: policies[name](g) });
+    g.step(toInput(policies[name](g)));
     if (g.tick % 300 === 0) samples.push(`${g.squad.count}`);
     const b = g.enemies.find((e) => e.kind === 'boss');
     if (b) boss = `boss hp ${Math.ceil(b.hp)}/${b.maxHp}`;

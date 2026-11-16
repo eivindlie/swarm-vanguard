@@ -9,7 +9,7 @@ import { buy } from './meta/upgrades';
 import { loadSettings, saveSettings } from './meta/settings';
 import { InstallPrompt } from './ui/install';
 import { installDebugApi } from './debug/api';
-import { policies } from './sim/bots';
+import { policies, toInput } from './sim/bots';
 
 const params = new URLSearchParams(location.search);
 // The whole simulation clock runs 25% faster than real time (everything scales together, so balance is
@@ -57,8 +57,12 @@ let playedFor = 0;
 
 // ------------------------------------------------------------- settings UI
 
+// browsers refuse to vibrate (and log an error) before the first tap or key press
+let userActivated = false;
+for (const ev of ['pointerdown', 'keydown'] as const) window.addEventListener(ev, () => (userActivated = true), { once: true, passive: true });
+
 function buzz(pattern: number | number[]) {
-  if (settings.haptics && 'vibrate' in navigator) {
+  if (settings.haptics && userActivated && 'vibrate' in navigator) {
     try {
       navigator.vibrate(pattern);
     } catch {
@@ -97,7 +101,7 @@ function restart(level?: number, newSeed?: number) {
   game = new Game(LEVELS[levelIdx], seed, metaModifiers(save));
   renderer.reset();
   renderer.setLevel(LEVELS[levelIdx]);
-  controls.reset();
+  controls.reset(game.level.arena?.startY ?? 0);
   hud.setLevel(LEVELS[levelIdx]);
   hud.hideEnd();
   hud.resetLevelState();
@@ -184,7 +188,7 @@ installDebugApi({
   getGame: () => game,
   renderer,
   controls,
-  getInput: () => (autoPolicy ? autoPolicy(game) : controls.value()),
+  getInput: () => inputNow(),
   restart,
   setPaused: (p) => (paused = p),
   start: startGame,
@@ -229,6 +233,17 @@ function handleEvents() {
       case 'leak': sfx.squadHit(); buzz(30); break;
       case 'explosion': sfx.blockBreak(); break;
       case 'barrelHit': sfx.blockHit(); break;
+      case 'pickup': {
+        sfx.pickup(e.value);
+        if (e.value >= 10) {
+          const p = renderer.project(e.x, e.y, 1.2);
+          hud.popup(`+${e.value}`, p.x, p.y);
+          buzz(10);
+        }
+        break;
+      }
+      case 'wave': sfx.horn(); break;
+      case 'collapse': hitStop = Math.max(hitStop, 0.3); buzz([40, 30, 120]); sfx.win(); break;
       case 'bossAdds':
         hud.showBanner('REINFORCEMENTS!', '⚠ THE BOSS CALLS');
         sfx.squadHit();
@@ -239,6 +254,11 @@ function handleEvents() {
       case 'lose': sfx.lose(); buzz([80, 40, 120]); break;
     }
   }
+}
+
+/** Input for this tick: the bot (?autoplay=) or the player. */
+function inputNow() {
+  return autoPolicy ? toInput(autoPolicy(game)) : controls.input();
 }
 
 // ----------------------------------------------------------------- one-time tips
@@ -256,6 +276,12 @@ function maybeTip(dt: number) {
     saveSettings(settings);
     hud.showTip(text);
   };
+  if (game.level.arena) {
+    // a siege has its own two tips; the lane tips below measure distance ahead of the squad
+    if (!seen('siege')) say('siege', 'DRAG ANYWHERE: SHOOT THE KEYSTONE PILLAR');
+    else if (!seen('tile') && game.pickups.length) say('tile', 'WALK OVER TILES TO COLLECT SOLDIERS');
+    return;
+  }
   if (!seen('gate') && game.gates.some((g) => !g.used && g.side.op !== 'upgrade' && near(g.y))) say('gate', 'STEER INTO THE BETTER GATE');
   else if (!seen('block') && game.blocks.some((b) => near(b.y))) say('block', 'SHOOT BLOCKS TO BREAK THEM: REWARDS INSIDE');
   else if (!seen('upgrade') && game.gates.some((g) => !g.used && g.side.op === 'upgrade' && near(g.y))) say('upgrade', 'PURPLE GATE = WEAPON UPGRADE');
@@ -274,7 +300,7 @@ function showEndScreen() {
     const base = game.level.bonus && !first ? Math.round(game.level.coins / 2) : game.level.coins;
     const r = recordWin(save, game.level.id, base, game.squad.count, game.squad.maxCount, bonus);
     const lastLevel = levelIdx + 1 >= LEVELS.length;
-    hud.showEnd(true, `Survivors: ${game.squad.count}  ·  +${r.coins} coins`, lastLevel ? 'Play again' : 'Next level', r.stars, game.level.bonus ? 'BONUS CLEAR!' : 'VICTORY!');
+    hud.showEnd(true, `Survivors: ${game.squad.count}  ·  +${r.coins} coins`, lastLevel ? 'Play again' : 'Next level', r.stars, game.level.bonus === 'siege' ? 'SIEGE BROKEN!' : game.level.bonus ? 'BONUS CLEAR!' : 'VICTORY!');
   } else {
     hud.showEnd(false, 'Your squad was wiped out.', 'Retry');
   }
@@ -286,6 +312,8 @@ function frame(now: number) {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
   controls.limit = game.maxX();
+  const arena = game.level.arena;
+  controls.yRange = arena ? [arena.minY, arena.maxY] : null; // vertical steering only exists in a siege
   controls.update(dt);
 
   if (hitStop > 0) hitStop -= dt;
@@ -294,7 +322,7 @@ function frame(now: number) {
     playedFor += dt;
     let guard = 0;
     while (acc >= DT && guard++ < 20 && game.phase === 'playing') {
-      game.step({ targetX: autoPolicy ? autoPolicy(game) : controls.value() });
+      game.step(inputNow());
       handleEvents();
       acc -= DT;
       if (hitStop > 0) break;

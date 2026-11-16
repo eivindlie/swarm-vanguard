@@ -1,4 +1,4 @@
-import type { Game } from '../sim/game';
+import type { Game, Input } from '../sim/game';
 import type { GameRenderer } from '../render/renderer';
 import type { Controls } from '../input/controls';
 
@@ -6,7 +6,7 @@ export interface DebugHooks {
   getGame(): Game;
   renderer: GameRenderer;
   controls: Controls;
-  getInput(): number;
+  getInput(): Input;
   restart(level?: number, seed?: number): void;
   setPaused(p: boolean): void;
   start(): void;
@@ -17,11 +17,14 @@ export function installDebugApi(h: DebugHooks) {
   (window as any).__game = {
     getState: () => h.getGame().snapshot(),
     stats: () => h.renderer.stats(),
-    setInput: (x: number | null) => (h.controls.override = x),
+    setInput: (x: number | null, y?: number | null) => {
+      h.controls.override = x;
+      h.controls.overrideY = y ?? null;
+    },
     step: (n = 1) => {
       const g = h.getGame();
       for (let i = 0; i < n; i++) {
-        g.step({ targetX: h.getInput() });
+        g.step(h.getInput());
         h.renderer.fxEvents(g);
       }
       h.renderer.render(g, 1 / 60);

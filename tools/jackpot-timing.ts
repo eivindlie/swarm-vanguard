@@ -1,7 +1,7 @@
 // How long does each giant block hold the squad? (pinned seconds per block, squad size, dps at the moment)
 import { LEVELS } from '../src/levels';
 import { Game } from '../src/sim/game';
-import { policies } from '../src/sim/bots';
+import { policies, toInput } from '../src/sim/bots';
 const id = Number(process.argv[2] ?? 101);
 const level = LEVELS.find((l) => l.id === id)!;
 const g = new Game(level, 1);
@@ -10,7 +10,7 @@ let prevY = 0;
 let lastBreak = 0;
 let n = 0;
 while (g.phase === 'playing' && g.tick < 20000) {
-  g.step({ targetX: policies.balanced(g) });
+  g.step(toInput(policies.balanced(g)));
   if (Math.abs(g.squad.y - prevY) < 1e-9) pinned++;
   prevY = g.squad.y;
   for (const e of g.events) {

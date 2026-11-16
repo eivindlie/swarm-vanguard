@@ -37,6 +37,11 @@ that pay out absurd reward packs, no danger) and **Swarm** (a power-fantasy hord
 final squad size. Huge hordes are rendered with distance LOD (about 24-triangle "far" models; the switch distance
 shrinks as the crowd grows), so a 2000-strong carpet costs about the same as 300 detailed enemies.
 
+**Siege levels** (a fixed-screen mode, one per world, optional): no scrolling. Drag in both directions to walk the squad
+around the arena. The nest under the giant tile roof sends timed waves that walk straight south; any enemy that reaches
+the red line costs lives. Collect floor tiles (+1, golden +10) and break crates for growth, and shoot the keystone pillar:
+when it falls the roof collapses, everything is crushed and you win. The mass under the roof thins out as waves are sent.
+
 Four worlds x four levels: Sun Dunes, Red Canyon, Frozen Wastes, Ember Peak, each with its own boss.
 `npx tsx tools/weapons.ts` compares the weapon types in a fixed arena. `?theme=0..3` previews a world.
 

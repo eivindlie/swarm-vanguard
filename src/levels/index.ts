@@ -1,6 +1,7 @@
 import type { LevelDef } from '../sim/level';
 import { Rng } from '../sim/rng';
 import tuned from './tuned.json';
+import { siege, siegeParams } from './siege';
 import variants from './variants.json';
 import {
   LevelBuilder, add, mul, sub, div, soldiers, multi, dmgUp, rateUp, pierceUp, spreadUp, shotgun, rocket, laser,
@@ -149,7 +150,9 @@ export function makeLevels(over: Overrides = {}, variantOver: Overrides = {}): L
   const ids = Array.from({ length: LEVEL_COUNT - 3 }, (_, i) => i + 4);
   const regular = [...makeHand(K), ...ids.map((id) => generated(id, K, variantOver[id]))];
   const bonus = makeBonus(K);
-  return regular.flatMap((l) => (bonus[l.id] ? [l, bonus[l.id]] : [l]));
+  const sieges = siegeParams();
+  // after each world: its bonus level, then its siege
+  return regular.flatMap((l) => [l, ...(bonus[l.id] ? [bonus[l.id]] : []), ...(sieges[l.id] ? [siege(sieges[l.id], K(sieges[l.id].id))] : [])]);
 }
 
 export const LEVELS: LevelDef[] = makeLevels();

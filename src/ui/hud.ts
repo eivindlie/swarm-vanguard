@@ -17,6 +17,8 @@ export class Hud {
   private boss = $('boss');
   private bossBar = $('boss').querySelector('i') as HTMLElement;
   private bossHp = $('bossHp');
+  private bossLabel = $('boss').querySelector('span') as HTMLElement;
+  private barWrap = $('barWrap');
   readonly start = $('start');
   readonly end = $('end');
   readonly startBtn = $<HTMLButtonElement>('startBtn');
@@ -101,13 +103,13 @@ export class Hud {
       b.className = 'lv' + (i === selected ? ' sel' : '') + (lv.bonus ? ' bonus' : '');
       b.disabled = i + 1 > unlocked;
       const st = stars[lv.id] ?? 0;
-      const label = lv.bonus ? '🎁' : String(lv.id);
-      b.innerHTML = `${label}<small>${lv.bonus ? (st ? 'DONE' : 'BONUS') : '★'.repeat(st) + '☆'.repeat(st ? 3 - st : 0)}</small>`;
+      const label = lv.bonus === 'siege' ? '🏰' : lv.bonus ? '🎁' : String(lv.id);
+      b.innerHTML = `${label}<small>${lv.bonus ? (st ? 'DONE' : lv.bonus === 'siege' ? 'SIEGE' : 'BONUS') : '★'.repeat(st) + '☆'.repeat(st ? 3 - st : 0)}</small>`;
       b.addEventListener('click', () => onPick(i));
       host.appendChild(b);
     }
     const cur = levels[selected];
-    this.startBtn.textContent = cur.bonus ? `Play bonus: ${cur.name}` : `Play level ${cur.id}`;
+    this.startBtn.textContent = cur.bonus ? `Play ${cur.bonus === 'siege' ? 'siege' : 'bonus'}: ${cur.name}` : `Play level ${cur.id}`;
   }
 
   showStart() { this.start.classList.add('show'); }
@@ -136,7 +138,7 @@ export class Hud {
   hideShop() { this.shop.classList.remove('show'); }
 
   setLevel(level: LevelDef) {
-    this.lvl.textContent = level.bonus ? `BONUS · ${level.name.toUpperCase()}` : `LEVEL ${level.id}`;
+    this.lvl.textContent = level.bonus === 'siege' ? `SIEGE · ${level.name.toUpperCase()}` : level.bonus ? `BONUS · ${level.name.toUpperCase()}` : `LEVEL ${level.id}`;
   }
 
   update(game: Game, r: GameRenderer) {
@@ -168,9 +170,13 @@ export class Hud {
         break;
       }
     }
-    const boss = game.enemies.find((e) => e.kind === 'boss');
+    const siege = !!game.level.arena;
+    // a siege has no distance to cover: the top bar shows the keystone's HP instead of progress
+    this.barWrap.style.visibility = siege ? 'hidden' : '';
+    this.bossLabel.textContent = siege ? 'KEYSTONE' : 'BOSS';
+    const boss = siege ? game.keystone : game.enemies.find((e) => e.kind === 'boss');
     this.boss.classList.toggle('show', !!boss);
-    if (boss && boss.awake && !this.bossAnnounced) {
+    if (!siege && boss && 'awake' in boss && boss.awake && !this.bossAnnounced) {
       this.bossAnnounced = true;
       this.showBanner(r.theme.bossName, '⚠ WARNING');
     }
@@ -178,7 +184,7 @@ export class Hud {
       this.bossBar.style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
       this.bossHp.textContent = String(Math.ceil(boss.hp));
     }
-    this.bar.style.width = `${Math.min(100, (game.squad.y / game.level.length) * 100)}%`;
+    if (!siege) this.bar.style.width = `${Math.min(100, (game.squad.y / game.level.length) * 100)}%`;
   }
 
   popup(text: string, x: number, y: number) {

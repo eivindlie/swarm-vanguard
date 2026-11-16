@@ -255,6 +255,7 @@ describe('new mechanics', () => {
 });
 
 import { recordWin, unlockedCount } from '../src/meta/save';
+import { policies, toInput } from '../src/sim/bots';
 
 describe('bonus levels and jackpot rewards', () => {
   it('a multi reward applies every part at once', () => {
@@ -273,14 +274,21 @@ describe('bonus levels and jackpot rewards', () => {
     expect(g.stat('damage')).toBeCloseTo(dmg * 2, 5);
     expect(g.weapon).toBe('laser');
   });
-  it('the game has 16 regular levels plus one bonus level after each world, with unique ids', () => {
+  it('the game has 16 regular levels plus optional levels after each world, with unique ids', () => {
     expect(LEVELS.filter((l) => !l.bonus)).toHaveLength(16);
-    expect(LEVELS.filter((l) => l.bonus)).toHaveLength(4);
+    expect(LEVELS.filter((l) => l.bonus && l.bonus !== 'siege')).toHaveLength(4);
+    expect(LEVELS.filter((l) => l.bonus === 'siege').length).toBeGreaterThanOrEqual(1);
     expect(new Set(LEVELS.map((l) => l.id)).size).toBe(LEVELS.length);
-    for (const [i, l] of LEVELS.entries()) if (l.bonus) expect(LEVELS[i - 1].id % 4).toBe(0);
+    // every optional level sits right after a world's fourth level (or after another optional one)
+    for (const [i, l] of LEVELS.entries()) {
+      if (!l.bonus) continue;
+      let j = i - 1;
+      while (LEVELS[j].bonus) j--;
+      expect(LEVELS[j].id % 4, `${l.name} follows level ${LEVELS[j].id}`).toBe(0);
+    }
   });
   it('bonus levels have no boss and bots clear them', () => {
-    for (const l of LEVELS.filter((x) => x.bonus)) {
+    for (const l of LEVELS.filter((x) => x.bonus && x.bonus !== 'siege')) {
       expect(l.spawns.some((s) => s.t === 'enemies' && s.kind === 'boss')).toBe(false);
       const g = new Game(l, 1);
       while (g.phase === 'playing' && g.tick < 20000) g.step({ targetX: 0 });
@@ -385,5 +393,100 @@ describe('an elite pins the squad', () => {
     expect(pinnedTicks).toBeGreaterThan(10); // it did hold the squad for a while
     expect(g.enemies.some((e) => e.kind === 'elite')).toBe(false); // and was killed
     expect(g.squad.y).toBeGreaterThan(pinnedY); // the squad resumed its advance
+  });
+});
+
+describe('siege (arena) rules', () => {
+  const arena = {
+    half: 5.5, depth: 24, minY: 1, maxY: 8, bottom: -1.5, startX: 0, startY: 2,
+    escalate: { every: 1e9, count: 20, growth: 1.1, kind: 'grunt' as const }, // off here: the real levels escalate so runs end
+  };
+  const siegeLevel = (spawns: LevelDef['spawns']): LevelDef => ({ id: 299, name: 's', length: 24, coins: 1, spawns, bonus: 'siege', arena });
+  const keystone = (hp = 300): LevelDef['spawns'][number] => ({
+    t: 'block', x: 3.9, y: 19.2, w: 2.4, hp, keystone: true, reward: { kind: 'multi', label: 'COLLAPSE', rewards: [{ kind: 'soldiers', n: 10 }] },
+  });
+
+  it('the squad does not advance on its own; it walks freely in y within its range', () => {
+    const g = new Game(siegeLevel([keystone()]), 1);
+    for (let i = 0; i < 120; i++) g.step({ targetX: 0 });
+    expect(g.squad.y).toBeCloseTo(2, 5); // no auto-advance
+    for (let i = 0; i < 300; i++) g.step({ targetX: 0, targetY: 50 });
+    expect(g.squad.y).toBeCloseTo(arena.maxY, 5); // clamped well below the nest
+    for (let i = 0; i < 300; i++) g.step({ targetX: 0, targetY: -50 });
+    expect(g.squad.y).toBeCloseTo(arena.minY, 5);
+  });
+
+  it('lane levels ignore targetY', () => {
+    const g = new Game(tiny([]), 1);
+    for (let i = 0; i < 60; i++) g.step({ targetX: 0, targetY: 5 });
+    expect(g.squad.y).toBeGreaterThan(3.5); // it advanced on its own at 4 u/s
+    expect(g.squad.y).toBeLessThan(4.5);
+  });
+
+  it('waves spawn awake at their time and walk south; one that reaches the bottom line costs a soldier', () => {
+    const g = new Game(siegeLevel([keystone(), { t: 'wave', at: 1, count: 1, kind: 'grunt', x: -5, spreadX: 0 }]), 1);
+    for (let i = 0; i < 50; i++) g.step({ targetX: 5, targetY: 8 });
+    expect(g.enemies.length).toBe(0); // not yet
+    let leaked = 0;
+    let spawned = false;
+    const start = g.squad.count;
+    for (let i = 0; i < 1500; i++) {
+      g.step({ targetX: 5, targetY: 8 }); // the squad stays far from the enemy's column
+      if (g.enemies.length) spawned = true;
+      if (spawned && g.enemies[0]) expect(g.enemies[0].awake).toBe(true);
+      leaked += g.events.filter((e) => e.t === 'leak').length;
+    }
+    expect(spawned).toBe(true);
+    expect(leaked).toBe(1);
+    expect(g.squad.count).toBeLessThanOrEqual(start - 1);
+    expect(g.enemies.length).toBe(0);
+  });
+
+  it('destroying the keystone wins at once, crushes everything alive and announces the collapse', () => {
+    const g = new Game(siegeLevel([keystone(60), { t: 'wave', at: 0.2, count: 12, kind: 'grunt', x: -3, spreadX: 1 }]), 1, [{ stat: 'startSize', add: 40 }]);
+    let collapse = 0;
+    for (let i = 0; i < 1800 && g.phase === 'playing'; i++) {
+      g.step({ targetX: 3.9, targetY: 3 });
+      collapse += g.events.filter((e) => e.t === 'collapse').length;
+    }
+    expect(g.phase).toBe('won');
+    expect(collapse).toBe(1);
+    expect(g.enemies.length).toBe(0);
+  });
+
+  it('floor tiles are collected by walking over them', () => {
+    const g = new Game(siegeLevel([keystone(), { t: 'tile', x: -4, y: 5, value: 10 }, { t: 'tile', x: 4, y: 3, value: 1 }]), 1);
+    const start = g.squad.count;
+    for (let i = 0; i < 200; i++) g.step({ targetX: -4, targetY: 5 });
+    expect(g.pickups.length).toBe(1);
+    expect(g.squad.count).toBe(start + 10);
+    for (let i = 0; i < 200; i++) g.step({ targetX: 4, targetY: 3 });
+    expect(g.pickups.length).toBe(0);
+    expect(g.squad.count).toBe(start + 11);
+  });
+
+  it('crates and tiles are not culled when they end up behind the squad', () => {
+    const g = new Game(siegeLevel([keystone(), { t: 'block', x: -4, y: 1.5, w: 2, hp: 99999, reward: { kind: 'soldiers', n: 5 } }, { t: 'tile', x: 4, y: 1.2, value: 3 }]), 1);
+    for (let i = 0; i < 300; i++) g.step({ targetX: 0, targetY: 8 }); // walk far above them
+    expect(g.blocks.some((b) => !b.keystone)).toBe(true);
+    expect(g.pickups.length).toBe(1);
+  });
+
+  it('every policy ends the first siege (waves escalate), standing still or parking loses and balanced wins', () => {
+    const lvl = LEVELS.find((l) => l.id === 201)!;
+    const results: Record<string, { won: number; unfinished: number }> = {};
+    for (const name of ['naive', 'park', 'pure-fight', 'greedy-expand', 'balanced']) {
+      results[name] = { won: 0, unfinished: 0 };
+      for (let seed = 1; seed <= 4; seed++) {
+        const g = new Game(lvl, seed);
+        while (g.phase === 'playing' && g.tick < 40000) g.step(toInput(policies[name](g)));
+        if (g.phase === 'playing') results[name].unfinished++;
+        if (g.phase === 'won') results[name].won++;
+      }
+    }
+    for (const name of Object.keys(results)) expect(results[name].unfinished, `${name} never finished`).toBe(0);
+    expect(results.naive.won).toBe(0);
+    expect(results.park.won).toBe(0);
+    expect(results.balanced.won).toBeGreaterThanOrEqual(3);
   });
 });
