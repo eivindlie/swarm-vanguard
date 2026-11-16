@@ -28,10 +28,14 @@ export class Hud {
   readonly shop = $('shop');
 
   private bossAnnounced = false;
+  private shownCount = -1;
+  private bump = 0;
+  private lastT = performance.now();
 
   /** Reset per-level HUD state (call on restart). */
   resetLevelState() {
     this.bossAnnounced = false;
+    this.shownCount = -1;
     $('banner').classList.remove('show');
     this.hideHint();
   }
@@ -120,7 +124,19 @@ export class Hud {
   }
 
   update(game: Game, r: GameRenderer) {
-    this.count.textContent = String(game.squad.count);
+    // the number rolls towards the real value and the label bumps when the squad grows
+    const now = performance.now();
+    const dt = Math.min(0.1, (now - this.lastT) / 1000);
+    this.lastT = now;
+    const target = game.squad.count;
+    if (this.shownCount < 0 || Math.abs(target - this.shownCount) < 0.5) this.shownCount = target;
+    else {
+      if (target > this.shownCount) this.bump = Math.min(1, this.bump + dt * 6);
+      this.shownCount += (target - this.shownCount) * Math.min(1, dt * 9);
+    }
+    this.bump = Math.max(0, this.bump - dt * 3);
+    this.count.textContent = String(Math.round(this.shownCount));
+    this.count.style.scale = String(1 + this.bump * 0.32);
     const wname = WEAPONS[game.weapon].name;
     if (wname !== this.weaponShown) {
       this.weaponShown = wname;

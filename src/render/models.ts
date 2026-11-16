@@ -426,3 +426,43 @@ export function miniFarGeometry(): THREE.BufferGeometry {
 export function splitterFarGeometry(): THREE.BufferGeometry {
   return build([{ geo: new THREE.SphereGeometry(0.55, 5, 3), color: 0x5ad15a, pos: [0, 0.5, 0] }]);
 }
+
+// ------------------------------------------------------------------ tracers
+
+/**
+ * A glowing streak: two crossed kites along Z, white-hot at the head (z = -0.5, the direction of travel)
+ * fading to transparent at the tail. Scaled per weapon; the instance colour tints it.
+ */
+export function tracerGeometry(): THREE.BufferGeometry {
+  const pos: number[] = [];
+  const col: number[] = [];
+  const idx: number[] = [];
+  const kite = (ax: 'x' | 'y') => {
+    const base = pos.length / 3;
+    const w = 0.5;
+    const pts: [number, number, number][] = [
+      [0, 0, -0.5], // head tip
+      ax === 'x' ? [-w, 0, -0.18] : [0, -w, -0.18],
+      [0, 0, 0.5], // tail tip
+      ax === 'x' ? [w, 0, -0.18] : [0, w, -0.18],
+    ];
+    const colors: [number, number, number, number][] = [
+      [1, 1, 1, 1],
+      [1, 0.92, 0.7, 0.85],
+      [1, 0.55, 0.15, 0],
+      [1, 0.92, 0.7, 0.85],
+    ];
+    pts.forEach((p, i) => {
+      pos.push(...p);
+      col.push(...colors[i]);
+    });
+    idx.push(base, base + 1, base + 3, base + 1, base + 2, base + 3);
+  };
+  kite('x');
+  kite('y');
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+  g.setIndex(idx);
+  return g;
+}

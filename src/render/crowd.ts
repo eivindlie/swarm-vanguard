@@ -20,10 +20,11 @@ const FLASH_GAIN: Record<EnemyKind, number> = { grunt: 1, runner: 1, brute: 0.55
 
 const BULLET_STYLE: Record<WeaponType, { color: number; s: [number, number, number] }> = {
   // big and bright enough to read on a phone screen (they were hairlines before)
-  rifle: { color: 0xffe14a, s: [2.6, 2.6, 1.8] },
-  shotgun: { color: 0xfff6d0, s: [2.0, 2.0, 1.0] },
-  rocket: { color: 0xff8a2a, s: [5, 5, 2.4] },
-  laser: { color: 0x6ff5ff, s: [2.0, 2.0, 5.5] },
+  // s = [width, height, length] of the streak
+  rifle: { color: 0xff5a1c, s: [0.3, 0.3, 3.8] },
+  shotgun: { color: 0xfff0c0, s: [0.26, 0.26, 1.5] },
+  rocket: { color: 0xff7a22, s: [0.8, 0.8, 3.4] },
+  laser: { color: 0x66f2ff, s: [0.26, 0.26, 8] },
 };
 
 // how fast each kind's walk cycle runs
@@ -113,7 +114,11 @@ export class Crowd {
       new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false }),
       MAX_SOLDIERS + MAX_ENEMIES + 700 + 120,
     );
-    this.bullets = this.inst(new THREE.BoxGeometry(0.07, 0.07, 0.55), new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }), MAX_BULLETS);
+    this.bullets = this.inst(
+      M.tracerGeometry(),
+      new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide }),
+      MAX_BULLETS,
+    );
     this.bullets.renderOrder = 5;
 
     const bar = new THREE.PlaneGeometry(1.3, 0.16);
@@ -417,9 +422,11 @@ export class Crowd {
     for (let i = 0; i < n; i++) {
       const b = game.bullets[i];
       const st = BULLET_STYLE[b.kind];
-      d.position.set(b.x, 0.7, -b.y);
       d.rotation.set(0, -Math.atan2(b.vx, b.vy), 0);
       d.scale.set(st.s[0], st.s[1], st.s[2]);
+      // centre the streak behind the bullet's head so the glowing tip is where the bullet actually is
+      const half = st.s[2] / 2;
+      d.position.set(b.x - (b.vx / Math.hypot(b.vx, b.vy)) * half, 0.7, -(b.y - (b.vy / Math.hypot(b.vx, b.vy)) * half));
       d.updateMatrix();
       this.bullets.setMatrixAt(i, d.matrix);
       this.bullets.setColorAt(i, this.tmp.set(st.color));
