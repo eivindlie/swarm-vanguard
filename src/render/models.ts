@@ -466,3 +466,55 @@ export function tracerGeometry(): THREE.BufferGeometry {
   g.setIndex(idx);
   return g;
 }
+
+// ---------------------------------------------------- rubble and the reward mountain
+
+/** A scatter of stones that piles up in front of a block as it takes damage (scaled by damage in props.ts). */
+export function rubbleGeometry(w: number): THREE.BufferGeometry {
+  return cached(`rubble|${w}`, () => {
+    const parts: Part[] = [];
+    let s = 12345;
+    const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+    const tones = [0x8b97a8, 0xa2adbd, 0x6f7b8c, 0xb7c1cf];
+    const n = Math.round(10 + w * 2.5);
+    for (let i = 0; i < n; i++) {
+      const r = 0.12 + rnd() * 0.2;
+      parts.push({
+        geo: new THREE.DodecahedronGeometry(r, 0),
+        color: tones[i % tones.length],
+        pos: [(rnd() - 0.5) * (w + 0.8), r * 0.6, 0.5 + rnd() * 0.9],
+        rot: [rnd() * 3, rnd() * 3, rnd() * 3],
+        scale: [1, 0.75, 1],
+      });
+    }
+    return build(parts);
+  });
+}
+
+/**
+ * The "reward mountain": a slanted roof of blue +N tiles (a few gold ones at the edge) that sits on top of
+ * a giant jackpot block. Breaking the block releases it as the cascade of tiles. One merged mesh.
+ */
+export function rewardRoofGeometry(w: number): THREE.BufferGeometry {
+  return cached(`roof|${w}`, () => {
+    const parts: Part[] = [];
+    const cols = Math.max(4, Math.floor(w / 0.62));
+    const rows = 7;
+    const tilt = -0.95; // leans back, like a ramp rising away from the camera
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = (c - (cols - 1) / 2) * (w / cols);
+        const gold = c >= cols - 2;
+        parts.push({
+          geo: box(w / cols - 0.07, 0.07, 0.34),
+          color: gold ? 0xffc21a : r % 2 ? 0x2f7bff : 0x4a90ff,
+          pos: [x, 1.95 + r * 0.36, -0.2 - r * 0.32],
+          rot: [tilt, 0, 0],
+        });
+      }
+    }
+    // a thin grey slab under the tiles so the pile reads as one object
+    parts.push({ geo: box(w + 0.2, 0.12, 2.6), color: 0x8c93a0, pos: [0, 2.0 + 1.1, -1.15], rot: [tilt, 0, 0] });
+    return build(parts);
+  });
+}

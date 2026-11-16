@@ -115,7 +115,7 @@ export type GameEvent =
   | { t: 'counterHit'; x: number; y: number }
   | { t: 'barrelHit'; x: number; y: number }
   | { t: 'bossAdds'; x: number; y: number }
-  | { t: 'blockBreak'; x: number; y: number; label: string; big: boolean }
+  | { t: 'blockBreak'; x: number; y: number; label: string; big: boolean; gain: number }
   | { t: 'gate'; x: number; y: number; delta: number; label: string }
   | { t: 'squadHit'; lost: number }
   | { t: 'leak'; x: number; y: number }
@@ -128,6 +128,13 @@ export type Phase = 'playing' | 'won' | 'lost';
 
 export interface Input {
   targetX: number;
+}
+
+/** Soldiers a reward grants (used by the renderer to size the tile cascade). */
+export function soldiersIn(r: BlockReward): number {
+  if (r.kind === 'soldiers') return r.n;
+  if (r.kind === 'multi') return r.rewards.reduce((a, x) => a + soldiersIn(x), 0);
+  return 0;
 }
 
 export function gateLabel(s: GateSide): string {
@@ -552,7 +559,7 @@ export class Game {
     const r = bl.reward;
     this.applyReward(r);
     const label = r.kind === 'soldiers' ? `+${r.n}` : r.label;
-    this.events.push({ t: 'blockBreak', x: bl.x, y: bl.y, label, big: bl.maxHp >= 300 });
+    this.events.push({ t: 'blockBreak', x: bl.x, y: bl.y, label, big: bl.maxHp >= 300, gain: soldiersIn(r) });
   }
 
   private applyReward(r: BlockReward): void {

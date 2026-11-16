@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { Game } from '../sim/game';
 import { halfWidth } from '../sim/formation';
 import type { LevelDef } from '../sim/level';
-import { Particles } from './fx';
+import { Cascade, Particles } from './fx';
 import { World } from './world';
 import { PropViews } from './props';
 import { Crowd } from './crowd';
@@ -16,6 +16,7 @@ export class GameRenderer {
   readonly scene = new THREE.Scene();
   readonly camera = new THREE.PerspectiveCamera(60, 9 / 16, 0.1, 260);
   readonly fx: Particles;
+  private cascade: Cascade;
   readonly world: World;
   private props: PropViews;
   private crowd: Crowd;
@@ -55,6 +56,7 @@ export class GameRenderer {
     this.props = new PropViews(this.scene);
     this.crowd = new Crowd(this.scene);
     this.fx = new Particles(this.scene);
+    this.cascade = new Cascade(this.scene);
     this.world.apply(THEMES[0], 1, 150);
 
     this.resize();
@@ -78,6 +80,7 @@ export class GameRenderer {
     this.crowd.reset();
     this.shake = 0;
     this.fovPulse = 0;
+    this.cascade.update(0, 0, 0);
     this.camX = 0;
     this.prevSqX = 0;
   }
@@ -105,7 +108,9 @@ export class GameRenderer {
           else if (e.kind === 'brute') this.addShake(0.12);
           break;
         case 'blockHit':
-          this.fx.burst(e.x, e.y, 0.9, 2, 0xcfd6dd, 2, 0.1, 0.35, 2);
+          // stone chunks that fall, plus a puff of dust that hangs in the air
+          this.fx.burst(e.x, e.y, 0.9, 3, 0x9aa8ba, 2.6, 0.17, 0.6, 3.2);
+          this.fx.burst(e.x, e.y, 1.0, 1, 0xe9dccb, 0.9, 0.5, 0.9, 0.6, 0.05);
           break;
         case 'barrelHit':
           this.fx.burst(e.x, e.y, 0.8, 3, 0xff9a3a, 2.2, 0.1, 0.35, 2.5);
@@ -118,7 +123,10 @@ export class GameRenderer {
           this.fx.burst(e.x, e.y, 0.9, 2, 0xffd23a, 2, 0.09, 0.35, 2);
           break;
         case 'blockBreak':
-          this.fx.burst(e.x, e.y, 1, e.big ? 60 : 30, 0xcfd6dd, e.big ? 7 : 4.5, 0.2, 0.8, 4);
+          this.fx.burst(e.x, e.y, 1, e.big ? 60 : 30, 0xb4bfce, e.big ? 7 : 4.5, 0.22, 0.9, 4);
+          this.fx.burst(e.x, e.y, 1.2, e.big ? 10 : 5, 0xe9dccb, 1.8, 0.4, 1.1, 1.2, 0.05); // billowing dust
+          // the reward arrives in the squad as a rain of tiles
+          if (e.gain > 0) this.cascade.spawn(e.x, e.y, e.big ? 5 : 2.4, e.big ? 3.2 : 2.2, Math.min(e.big ? 150 : 30, Math.round(e.big ? 24 + e.gain / 3 : 6 + e.gain / 2)));
           this.fx.burst(e.x, e.y, 1, e.big ? 36 : 12, 0xffd23a, e.big ? 6 : 3.5, 0.15, 0.9, 5);
           if (e.big) {
             // a jackpot: a fountain of confetti
@@ -130,6 +138,7 @@ export class GameRenderer {
         case 'gate':
           this.fx.burst(sq.x, sq.y, 0.6, 18, e.delta >= 0 ? 0x6fb4ff : 0xff6a6a, 4, 0.14, 0.7, 4);
           if (e.delta > 0) this.fovPulse = Math.max(this.fovPulse, 1);
+          if (e.delta >= 8) this.cascade.spawn(e.x, e.y, 2.8, 1.8, Math.min(40, Math.round(4 + e.delta / 3)), 0.7);
           break;
         case 'weapon':
           this.fx.burst(sq.x, sq.y + 1, 1, 24, 0xffe27a, 5, 0.15, 0.8, 5);
@@ -239,6 +248,7 @@ export class GameRenderer {
     this.world.update(dt, this.camera);
     this.crowd.draw(game, dt, this.camera);
     this.fx.update(dt);
+    this.cascade.update(dt, sq.x, -sq.y);
     this.props.update(game, dt);
 
     this.renderer.info.reset();

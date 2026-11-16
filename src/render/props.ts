@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Game, gateLabel, type Barrel, type Block, type Counter, type Gate } from '../sim/game';
 import { propMaterial } from './materials';
-import { barrelGeometry, blockGeometry, counterGeometry, gateFrameGeometry } from './models';
+import { barrelGeometry, blockGeometry, counterGeometry, gateFrameGeometry, rewardRoofGeometry, rubbleGeometry } from './models';
 
 // ------------------------------------------------------------------ textures
 
@@ -120,6 +120,7 @@ interface BlockView {
   canvas: HTMLCanvasElement;
   tex: THREE.CanvasTexture;
   crack: THREE.Mesh;
+  rubble?: THREE.Mesh;
   crackStage: number;
   shown: string;
   lastHp: number;
@@ -227,6 +228,12 @@ export class PropViews {
       v.group.scale.set(1 + v.pulse * 0.06, 1 - v.pulse * 0.05, 1 + v.pulse * 0.06);
       v.mat.emissive.setScalar(v.pulse * 0.45);
       v.mat.color.copy(v.base).multiplyScalar(0.62 + 0.38 * frac);
+      if (v.rubble) {
+        // the pile of stones in front grows as the block is chipped away
+        const dmg = 1 - frac;
+        v.rubble.visible = dmg > 0.04;
+        v.rubble.scale.set(1, 0.3 + dmg * 1.1, 0.5 + dmg * 0.7);
+      }
       const stage = frac > 0.75 ? 0 : frac > 0.5 ? 1 : frac > 0.25 ? 2 : 3;
       if (stage !== v.crackStage) {
         v.crackStage = stage;
@@ -250,15 +257,20 @@ export class PropViews {
     const mat = propMaterial();
     const body = new THREE.Mesh(blockGeometry(b.w, b.d, special), mat);
     group.add(body);
+    const rubble = new THREE.Mesh(rubbleGeometry(b.w), propMaterial());
+    rubble.position.z = b.d / 2 - 0.2;
+    rubble.visible = false;
+    group.add(rubble);
+    if (b.w >= 5 && b.reward.kind === 'multi') group.add(new THREE.Mesh(rewardRoofGeometry(b.w), propMaterial())); // the reward mountain
     const crack = new THREE.Mesh(new THREE.PlaneGeometry(b.w * 0.92, 1.3), new THREE.MeshBasicMaterial({ map: cracks[0], transparent: true, depthWrite: false }));
     crack.position.set(0, 0.8, b.d / 2 + 0.02);
     crack.visible = false;
     group.add(crack);
     const giant = b.w >= 5; // lane-wide jackpot blocks get a big label
-    const { canvas, tex } = this.makeLabel(group, giant ? 3.1 : 2.35, b.d / 2, giant ? 1.55 : 1);
+    const { canvas, tex } = this.makeLabel(group, giant ? 5.6 : 2.35, giant ? -0.6 : b.d / 2, giant ? 1.55 : 1);
     group.position.set(b.x, 0, -b.y);
     this.scene.add(group);
-    const v: BlockView = { group, body, mat, base, canvas, tex, crack, crackStage: 0, shown: '', lastHp: b.hp, pulse: 0 };
+    const v: BlockView = { group, body, mat, base, canvas, tex, crack, rubble, crackStage: 0, shown: '', lastHp: b.hp, pulse: 0 };
     this.blocks.set(b.id, v);
     return v;
   }
