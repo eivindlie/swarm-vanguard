@@ -1,5 +1,7 @@
 import type { BlockReward, EnemyKind, GateSide, LevelDef, Spawn, WeaponType } from '../sim/level';
 
+const LANE_HALF_SPAWN = 3.7;
+
 /** Tiny DSL: each call places something at the cursor and moves the cursor forward. */
 export class LevelBuilder {
   spawns: Spawn[] = [];
@@ -42,10 +44,23 @@ export class LevelBuilder {
     this.y += d;
     return this;
   }
+  /** A dense carpet of enemies across the whole lane: the over-the-top "endless red mass" of the ads. */
+  swarm(n: number, kind: EnemyKind = 'grunt', after = 24, density = 16) {
+    const count = Math.max(1, Math.round(n * this.k));
+    this.spawns.push({ t: 'enemies', y: this.y, x: 0, spreadX: LANE_HALF_SPAWN, spreadY: Math.max(5, count / density), count, kind });
+    this.y += after + count / density;
+    return this;
+  }
+  private extra: Partial<LevelDef> = {};
+  /** Level metadata: bonus type and explicit world. */
+  meta(m: Partial<LevelDef>) {
+    this.extra = m;
+    return this;
+  }
   build(id: number, name: string, bossHp: number, coins: number, hpMul = 1 + 0.15 * (id - 1), bossAdds = 0): LevelDef {
     const length = this.y + 14;
-    this.spawns.push({ t: 'enemies', y: length + 12, x: 0, spreadX: 0, spreadY: 0, count: 1, kind: 'boss', hp: Math.round(bossHp * this.k) });
-    return { id, name, length, spawns: this.spawns, coins, hpMul, bossAdds: Math.round(bossAdds * this.k) };
+    if (bossHp > 0) this.spawns.push({ t: 'enemies', y: length + 12, x: 0, spreadX: 0, spreadY: 0, count: 1, kind: 'boss', hp: Math.round(bossHp * this.k) });
+    return { id, name, length, spawns: this.spawns, coins, hpMul, bossAdds: Math.round(bossAdds * this.k), ...this.extra };
   }
 }
 
@@ -60,6 +75,7 @@ export const upLaser = upWeapon('laser', 'LASER');
 export const upDamage: GateSide = { op: 'upgrade', value: 0, upgrade: { kind: 'stat', stat: 'damage', mul: 1.4 }, label: 'DMG +40%' };
 export const upRate: GateSide = { op: 'upgrade', value: 0, upgrade: { kind: 'stat', stat: 'fireInterval', mul: 0.8 }, label: 'FAST +25%' };
 export const upPierce: GateSide = { op: 'upgrade', value: 0, upgrade: { kind: 'stat', stat: 'pierce', add: 1 }, label: 'PIERCE' };
+export const multi = (label: string, ...rewards: BlockReward[]): BlockReward => ({ kind: 'multi', label, rewards });
 export const soldiers = (n: number): BlockReward => ({ kind: 'soldiers', n });
 export const dmgUp: BlockReward = { kind: 'weapon', stat: 'damage', mul: 1.4, label: 'DMG +40%' };
 export const rateUp: BlockReward = { kind: 'weapon', stat: 'fireInterval', mul: 0.8, label: 'FAST +25%' };

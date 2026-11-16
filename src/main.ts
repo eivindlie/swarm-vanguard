@@ -15,9 +15,12 @@ const timeScale = Math.max(0.1, Number(params.get('speed') ?? 1));
 const save = loadSave();
 const settings = loadSettings();
 const urlLevel = params.get('level');
-let levelIdx = urlLevel
-  ? Math.max(0, Math.min(LEVELS.length - 1, Number(urlLevel) - 1))
-  : Math.min(save.unlockedLevel, LEVELS.length) - 1;
+// levels are addressed by id (bonus levels are 101+); `levelIdx` is the position in play order
+const idxOfId = (id: number) => {
+  const i = LEVELS.findIndex((l) => l.id === id);
+  return i >= 0 ? i : Math.max(0, Math.min(LEVELS.length - 1, id - 1));
+};
+let levelIdx = urlLevel ? idxOfId(Number(urlLevel)) : Math.min(save.unlockedLevel, LEVELS.length) - 1;
 let seed = Number(params.get('seed') ?? 1);
 // ?autoplay=balanced|greedy-expand|pure-fight|naive lets a bot play (demo / visual testing)
 const autoPolicy = policies[params.get('autoplay') ?? ''];
@@ -62,8 +65,8 @@ function refreshToggles() {
 
 function refreshMenu() {
   hud.setCoins(save.coins);
-  hud.renderLevels(LEVELS.length, urlLevel ? LEVELS.length : save.unlockedLevel, save.stars, levelIdx + 1, (id) => {
-    restart(id);
+  hud.renderLevels(LEVELS, urlLevel ? LEVELS.length : save.unlockedLevel, save.stars, levelIdx, (i) => {
+    restart(LEVELS[i].id);
     refreshMenu();
   });
   refreshToggles();
@@ -72,13 +75,13 @@ function refreshMenu() {
 // ---------------------------------------------------------------- lifecycle
 
 function restart(level?: number, newSeed?: number) {
-  if (level !== undefined) levelIdx = Math.max(0, Math.min(LEVELS.length - 1, level - 1));
+  if (level !== undefined) levelIdx = idxOfId(level);
   if (newSeed !== undefined) seed = newSeed;
   game = new Game(LEVELS[levelIdx], seed, metaModifiers(save));
   renderer.reset();
   renderer.setLevel(LEVELS[levelIdx]);
   controls.reset();
-  hud.setLevel(LEVELS[levelIdx].id);
+  hud.setLevel(LEVELS[levelIdx]);
   hud.hideEnd();
   hud.resetLevelState();
   shownEnd = false;
@@ -90,7 +93,7 @@ function restart(level?: number, newSeed?: number) {
 function startGame() {
   if (modsDirty) {
     modsDirty = false;
-    restart(levelIdx + 1);
+    restart(LEVELS[levelIdx].id);
   }
   sfx.unlock();
   sfx.startMusic();
@@ -100,7 +103,7 @@ function startGame() {
   if (!autoPolicy && !settings.hintSeen && levelIdx === 0) hud.showHint();
 }
 
-hud.setLevel(LEVELS[levelIdx].id);
+hud.setLevel(LEVELS[levelIdx]);
 refreshMenu();
 hud.mute.textContent = sfx.muted ? '🔇' : '🔊';
 hud.mute.addEventListener('click', () => {
@@ -133,12 +136,12 @@ hud.shopBack.addEventListener('click', () => {
 });
 hud.endBtn.addEventListener('click', () => {
   const won = game.phase === 'won';
-  restart(won && levelIdx + 1 < LEVELS.length ? levelIdx + 2 : levelIdx + 1);
+  restart(won && levelIdx + 1 < LEVELS.length ? LEVELS[levelIdx + 1].id : LEVELS[levelIdx].id);
   sfx.startMusic();
   paused = false;
 });
 hud.menuBtn.addEventListener('click', () => {
-  restart(levelIdx + 1);
+  restart(LEVELS[levelIdx].id);
   paused = true;
   refreshMenu();
   hud.showStart();
@@ -186,8 +189,9 @@ function handleEvents() {
         const p = renderer.project(e.x, e.y, 1.5);
         hud.popup(e.label, p.x, p.y);
         sfx.blockBreak();
-        hitStop = Math.max(hitStop, 0.06);
-        buzz(25);
+        hitStop = Math.max(hitStop, e.big ? 0.14 : 0.06);
+        buzz(e.big ? [30, 30, 60] : 25);
+        if (e.big) sfx.win();
         break;
       }
       case 'gate': {
@@ -217,9 +221,10 @@ function showEndScreen() {
   sfx.stopMusic();
   const won = game.phase === 'won';
   if (won) {
-    const r = recordWin(save, game.level.id, game.level.coins, game.squad.count, game.squad.maxCount, LEVELS.length);
+    const bonus = game.level.bonus ? Math.round(game.squad.count * 0.6) : 0; // bonus levels pay by final squad size
+    const r = recordWin(save, game.level.id, game.level.coins, game.squad.count, game.squad.maxCount, LEVELS.length, levelIdx + 1, LEVELS[levelIdx + 1]?.bonus !== undefined, bonus);
     const lastLevel = levelIdx + 1 >= LEVELS.length;
-    hud.showEnd(true, `Survivors: ${game.squad.count}  ·  +${r.coins} coins`, lastLevel ? 'Play again' : 'Next level', r.stars);
+    hud.showEnd(true, `Survivors: ${game.squad.count}  ·  +${r.coins} coins`, lastLevel ? 'Play again' : 'Next level', r.stars, game.level.bonus ? 'BONUS CLEAR!' : 'VICTORY!');
   } else {
     hud.showEnd(false, 'Your squad was wiped out.', 'Retry');
   }

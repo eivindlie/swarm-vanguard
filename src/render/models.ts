@@ -401,3 +401,28 @@ export function barrelGeometry(): THREE.BufferGeometry {
     ]),
   );
 }
+
+// ------------------------------------------------------- far LODs for huge crowds
+// ~24 triangles each: far away, a horde only needs the right colour and silhouette.
+
+export function gruntFarGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: box(0.34, 0.5, 0.26), color: 0xd93636, pos: [0, 0.28, 0] },
+    { geo: box(0.24, 0.22, 0.22), color: 0xa81f1f, pos: [0, 0.65, 0] },
+  ]);
+}
+
+export function runnerFarGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: box(0.26, 0.4, 0.36), color: 0xff8a1f, pos: [0, 0.3, 0], rot: [-0.4, 0, 0] },
+    { geo: box(0.2, 0.2, 0.2), color: 0xc9600a, pos: [0, 0.48, -0.2] },
+  ]);
+}
+
+export function miniFarGeometry(): THREE.BufferGeometry {
+  return build([{ geo: box(0.34, 0.3, 0.34), color: 0x7fe67f, pos: [0, 0.18, 0] }]);
+}
+
+export function splitterFarGeometry(): THREE.BufferGeometry {
+  return build([{ geo: new THREE.SphereGeometry(0.55, 5, 3), color: 0x5ad15a, pos: [0, 0.5, 0] }]);
+}

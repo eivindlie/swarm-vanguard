@@ -65,7 +65,7 @@ export class GameRenderer {
 
   /** Build the world for a level (theme, scenery, finish line). */
   setLevel(level: LevelDef) {
-    const theme = this.themeOverride !== null ? THEMES[Math.max(0, Math.min(THEMES.length - 1, this.themeOverride))] : themeForLevel(level.id);
+    const theme = this.themeOverride !== null ? THEMES[Math.max(0, Math.min(THEMES.length - 1, this.themeOverride))] : themeForLevel(level);
     this.world.apply(theme, level.id, level.length);
     this.crowd.setBossVariant(theme.boss);
   }
@@ -116,10 +116,14 @@ export class GameRenderer {
           this.fx.burst(e.x, e.y, 0.9, 2, 0xffd23a, 2, 0.09, 0.35, 2);
           break;
         case 'blockBreak':
-          this.fx.burst(e.x, e.y, 1, 30, 0xcfd6dd, 4.5, 0.2, 0.8, 4);
-          this.fx.burst(e.x, e.y, 1, 12, 0xffd23a, 3.5, 0.15, 0.8, 5);
-          this.addShake(0.3);
-          this.fovPulse = Math.max(this.fovPulse, 0.8);
+          this.fx.burst(e.x, e.y, 1, e.big ? 60 : 30, 0xcfd6dd, e.big ? 7 : 4.5, 0.2, 0.8, 4);
+          this.fx.burst(e.x, e.y, 1, e.big ? 36 : 12, 0xffd23a, e.big ? 6 : 3.5, 0.15, 0.9, 5);
+          if (e.big) {
+            // a jackpot: a fountain of confetti
+            for (const c of CONFETTI) this.fx.burst(e.x, e.y, 1.5, 14, c, 6, 0.16, 1.5, 9);
+          }
+          this.addShake(e.big ? 0.55 : 0.3);
+          this.fovPulse = Math.max(this.fovPulse, e.big ? 1 : 0.8);
           break;
         case 'gate':
           this.fx.burst(sq.x, sq.y, 0.6, 18, e.delta >= 0 ? 0x6fb4ff : 0xff6a6a, 4, 0.14, 0.7, 4);

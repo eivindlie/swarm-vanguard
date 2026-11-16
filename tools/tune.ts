@@ -13,7 +13,7 @@ const GRID = Array.from({ length: 26 }, (_, i) => Math.round(0.2 * Math.pow(1.17
 const names = ['balanced', 'naive', 'pure-fight', 'greedy-expand'] as const;
 
 function rates(id: number, k: number): Record<string, number> {
-  const level = makeLevels({ [id]: k })[id - 1];
+  const level = makeLevels({ [id]: k }).find((l) => l.id === id)!;
   const r: Record<string, number> = {};
   for (const n of names) {
     let w = 0;
@@ -24,7 +24,9 @@ function rates(id: number, k: number): Record<string, number> {
 }
 
 const out: Record<string, number> = {};
-for (let id = 1; id <= LEVEL_COUNT; id++) {
+// regular levels only: bonus levels are power fantasies and stay at k = 1
+const IDS = Array.from({ length: LEVEL_COUNT }, (_, i) => i + 1);
+for (const id of IDS) {
   let best = { k: 1, score: -9, bal: 0, other: 0 };
   for (const k of GRID) {
     const r = rates(id, k);

@@ -181,11 +181,11 @@ export const THEMES: Theme[] = [
 ];
 
 /** Worlds are consecutive blocks of 4 levels; the last theme repeats if there are more levels. */
-export function themeIndexForLevel(levelId: number): number {
-  const i = Math.floor((levelId - 1) / 4);
+export function themeIndexForLevel(level: { id: number; world?: number }): number {
+  const i = level.world ?? Math.floor((level.id - 1) / 4);
   return Math.max(0, Math.min(THEMES.length - 1, i));
 }
 
-export function themeForLevel(levelId: number): Theme {
-  return THEMES[themeIndexForLevel(levelId)];
+export function themeForLevel(level: { id: number; world?: number }): Theme {
+  return THEMES[themeIndexForLevel(level)];
 }

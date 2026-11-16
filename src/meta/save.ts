@@ -54,14 +54,25 @@ export function starsFor(remaining: number, maxCount: number): number {
 }
 
 /** Records a win; returns what was earned. */
-export function recordWin(s: SaveData, levelId: number, levelCoins: number, remaining: number, maxCount: number, totalLevels: number) {
+export function recordWin(
+  s: SaveData,
+  levelId: number,
+  levelCoins: number,
+  remaining: number,
+  maxCount: number,
+  totalLevels: number,
+  position: number, // 1-based place in the play order
+  nextIsBonus = false,
+  bonusCoins = 0,
+) {
   const stars = starsFor(remaining, maxCount);
   const best = s.stars[levelId] ?? 0;
   const firstClear = best === 0;
-  const coins = Math.round((levelCoins + (stars - 1) * 5 + (firstClear ? levelCoins : 0)) * coinMultiplier(s));
+  const coins = Math.round((levelCoins + bonusCoins + (stars - 1) * 5 + (firstClear ? levelCoins : 0)) * coinMultiplier(s));
   s.coins += coins;
   s.stars[levelId] = Math.max(best, stars);
-  s.unlockedLevel = Math.max(s.unlockedLevel, Math.min(totalLevels, levelId + 1));
+  // a bonus level never blocks progress: clearing the level before it also unlocks the one after it
+  s.unlockedLevel = Math.max(s.unlockedLevel, Math.min(totalLevels, position + (nextIsBonus ? 2 : 1)));
   writeSave(s);
   return { stars, coins, firstClear };
 }

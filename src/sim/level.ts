@@ -17,6 +17,8 @@ export type EnemyKind = 'grunt' | 'runner' | 'brute' | 'splitter' | 'mini' | 'bo
 
 export type BlockReward =
   | { kind: 'soldiers'; n: number }
+  /** Several rewards at once: the bonus-level "jackpot" blocks. */
+  | { kind: 'multi'; label: string; rewards: BlockReward[] }
   | { kind: 'weaponType'; weapon: WeaponType; label: string }
   | { kind: 'weapon'; stat: 'damage' | 'fireInterval' | 'pierce' | 'spread'; add?: number; mul?: number; label: string };
 
@@ -36,5 +38,7 @@ export interface LevelDef {
   spawns: Spawn[];
   coins: number; // reward for clearing (meta-ready)
   hpMul?: number; // enemy HP multiplier for this level (grunts/runners/brutes)
+  bonus?: 'jackpot' | 'swarm'; // optional side levels: no fail pressure (jackpot) or a power-fantasy horde (swarm)
+  world?: number; // 0-based world index; defaults to the block of four levels the id falls in
   bossAdds?: number; // grunts the boss calls in at 66% and 33% HP (already scaled by the level's difficulty)
 }

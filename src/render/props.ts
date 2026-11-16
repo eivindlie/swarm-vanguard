@@ -193,12 +193,12 @@ export class PropViews {
     }
   }
 
-  private makeLabel(group: THREE.Group, y: number, z: number): { canvas: HTMLCanvasElement; tex: THREE.CanvasTexture } {
+  private makeLabel(group: THREE.Group, y: number, z: number, scale = 1): { canvas: HTMLCanvasElement; tex: THREE.CanvasTexture } {
     const [canvas] = mkCanvas(256, 128);
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
-    sprite.scale.set(2.6, 1.3, 1);
+    sprite.scale.set(2.6 * scale, 1.3 * scale, 1);
     sprite.position.set(0, y, z);
     sprite.renderOrder = 10;
     group.add(sprite);
@@ -254,7 +254,8 @@ export class PropViews {
     crack.position.set(0, 0.8, b.d / 2 + 0.02);
     crack.visible = false;
     group.add(crack);
-    const { canvas, tex } = this.makeLabel(group, 2.35, b.d / 2);
+    const giant = b.w >= 5; // lane-wide jackpot blocks get a big label
+    const { canvas, tex } = this.makeLabel(group, giant ? 3.1 : 2.35, b.d / 2, giant ? 1.55 : 1);
     group.position.set(b.x, 0, -b.y);
     this.scene.add(group);
     const v: BlockView = { group, body, mat, base, canvas, tex, crack, crackStage: 0, shown: '', lastHp: b.hp, pulse: 0 };

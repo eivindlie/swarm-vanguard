@@ -253,3 +253,50 @@ describe('new mechanics', () => {
     expect(gateScore(20, { op: 'add', value: 30 })).toBeGreaterThan(gateScore(20, up));
   });
 });
+
+import { recordWin } from '../src/meta/save';
+
+describe('bonus levels and jackpot rewards', () => {
+  it('a multi reward applies every part at once', () => {
+    const g = new Game(
+      tiny([
+        {
+          t: 'block', y: 8, x: 0, w: 6, hp: 3,
+          reward: { kind: 'multi', label: 'PACK', rewards: [{ kind: 'soldiers', n: 40 }, { kind: 'weapon', stat: 'damage', mul: 2, label: 'd' }, { kind: 'weaponType', weapon: 'laser', label: 'L' }] },
+        },
+      ]),
+      1,
+    );
+    const dmg = g.stat('damage');
+    for (let i = 0; i < 400 && g.blocks.length; i++) g.step({ targetX: 0 });
+    expect(g.squad.count).toBeGreaterThanOrEqual(40);
+    expect(g.stat('damage')).toBeCloseTo(dmg * 2, 5);
+    expect(g.weapon).toBe('laser');
+  });
+  it('the game has 16 regular levels plus one bonus level after each world, with unique ids', () => {
+    expect(LEVELS.filter((l) => !l.bonus)).toHaveLength(16);
+    expect(LEVELS.filter((l) => l.bonus)).toHaveLength(4);
+    expect(new Set(LEVELS.map((l) => l.id)).size).toBe(LEVELS.length);
+    for (const [i, l] of LEVELS.entries()) if (l.bonus) expect(LEVELS[i - 1].id % 4).toBe(0);
+  });
+  it('bonus levels have no boss and bots clear them', () => {
+    for (const l of LEVELS.filter((x) => x.bonus)) {
+      expect(l.spawns.some((s) => s.t === 'enemies' && s.kind === 'boss')).toBe(false);
+      const g = new Game(l, 1);
+      while (g.phase === 'playing' && g.tick < 20000) g.step({ targetX: 0 });
+      expect(g.phase, l.name).toBe('won');
+    }
+  });
+  it('clearing the level before a bonus level unlocks the one after it too (bonus is optional)', () => {
+    const s = loadSave();
+    recordWin(s, 4, 20, 10, 10, LEVELS.length, 4, true, 0);
+    expect(s.unlockedLevel).toBe(6);
+  });
+  it('bonus coins add to the reward', () => {
+    const a = loadSave();
+    const b = loadSave();
+    const ra = recordWin(a, 101, 60, 100, 100, LEVELS.length, 5, false, 0);
+    const rb = recordWin(b, 101, 60, 100, 100, LEVELS.length, 5, false, 180);
+    expect(rb.coins - ra.coins).toBe(180);
+  });
+});

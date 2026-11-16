@@ -2,7 +2,7 @@ import type { LevelDef } from '../sim/level';
 import { Rng } from '../sim/rng';
 import tuned from './tuned.json';
 import {
-  LevelBuilder, add, mul, sub, div, soldiers, dmgUp, rateUp, pierceUp, spreadUp, shotgun, rocket, laser,
+  LevelBuilder, add, mul, sub, div, soldiers, multi, dmgUp, rateUp, pierceUp, spreadUp, shotgun, rocket, laser,
   upShotgun, upRocket, upLaser, upDamage, upRate, upPierce,
 } from './builder';
 
@@ -86,15 +86,60 @@ function generated(id: number, K: (id: number) => number): LevelDef {
     else if (roll < 0.75) b.counter(rewardX * 1.1, 3 + Math.floor(id / 2), 1, 30 + id * 4, 12);
     else b.block(rewardX, Math.round(16 * scale * prog), weapons[Math.floor(rng.next() * weapons.length)]);
   }
+  // the last level of a world ends with a mega horde (an endless red mass, as in the ads)
+  if (id % 4 === 0) b.swarm(80 + id * 40, 'grunt', 22);
   b.horde(Math.round(14 * scale), 'grunt', { after: 18 });
   return b.build(id, NAMES[id - 1] ?? `Level ${id}`, Math.round(260 * id * 1.3), 20 + id * 5, undefined, 4 + id * 1.2);
 }
 
-/** Build all levels; `over` lets the tuner try other difficulty multipliers. */
+// --- Bonus levels: one after each world. Jackpot = giant blocks with absurd reward packs and no danger;
+// swarm = a power-fantasy horde of hundreds to thousands. Ids 101+ keep them out of the regular numbering. ---
+function jackpot(id: number, world: number, name: string, big: number): LevelDef {
+  const w = { w: 6, after: 16 };
+  return new LevelBuilder(1)
+    .meta({ bonus: 'jackpot', world })
+    .gates(add(10), mul(2), 12)
+    .block(0, Math.round(120 * big), multi('POWER UP', soldiers(40), dmgUp), w)
+    .gates(mul(2), mul(3), 12)
+    .block(0, Math.round(400 * big), multi('RAPID FIRE', soldiers(70), rateUp, pierceUp), w)
+    .counter(0, 30, 4, 320, 14)
+    .block(0, Math.round(1200 * big), multi('ARSENAL', soldiers(110), rocket, dmgUp), w)
+    .gates(mul(2), mul(2), 12)
+    .block(0, Math.round(3600 * big), multi('MEGA PACK', soldiers(150), rateUp, dmgUp, laser), w)
+    .block(0, Math.round(9000 * big), multi('JACKPOT!!!', soldiers(300), dmgUp, rateUp, dmgUp, rateUp), { w: 6, after: 20 })
+    .build(id, name, 0, 60, 1, 0);
+}
+
+function swarmBonus(id: number, world: number, name: string, sizes: [number, number, number], K: (id: number) => number): LevelDef {
+  const hpMul = 1 + 0.15 * (world * 4);
+  return new LevelBuilder(K(id))
+    .meta({ bonus: 'swarm', world })
+    .gates(mul(3), mul(2), 12)
+    .block(0, 150, multi('ROCKET PACK', rocket, soldiers(60), dmgUp), { w: 6, after: 16 })
+    .swarm(sizes[0], 'grunt', 22, 26)
+    .gates(mul(2), add(80), 12)
+    .swarm(sizes[1], 'grunt', 22, 26)
+    .gates(mul(2), mul(2), 12)
+    .swarm(sizes[2], 'grunt', 20, 26)
+    .build(id, name, 0, 70, hpMul, 0);
+}
+
+function makeBonus(K: (id: number) => number): Record<number, LevelDef> {
+  return {
+    4: jackpot(101, 0, 'Jackpot Vault', 1),
+    8: swarmBonus(102, 1, 'Horde Slaughter', [700, 1100, 1500], K),
+    12: jackpot(103, 2, 'Treasure Glacier', 1.3),
+    16: swarmBonus(104, 3, 'Inferno Swarm', [1000, 1600, 2200], K),
+  };
+}
+
+/** Build all levels in play order (a bonus level follows each world); `over` lets the tuner try other multipliers. */
 export function makeLevels(over: Overrides = {}): LevelDef[] {
   const K = (id: number) => over[id] ?? (tuned as Record<string, number>)[String(id)] ?? 1;
   const ids = Array.from({ length: LEVEL_COUNT - 3 }, (_, i) => i + 4);
-  return [...makeHand(K), ...ids.map((id) => generated(id, K))];
+  const regular = [...makeHand(K), ...ids.map((id) => generated(id, K))];
+  const bonus = makeBonus(K);
+  return regular.flatMap((l) => (bonus[l.id] ? [l, bonus[l.id]] : [l]));
 }
 
 export const LEVELS: LevelDef[] = makeLevels();

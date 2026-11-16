@@ -29,6 +29,11 @@ next to them. **Splitters** burst into three fast minis. Bosses call in reinforc
 Meta: coins buy permanent upgrades (squad size, firepower, fire rate, loot bonus). They are just sim modifiers;
 the difficulty tuner and the bots always run with zero upgrades.
 
+Bonus levels (one after each world, optional, they never block progress): **Jackpot** (giant lane-wide blocks
+that pay out absurd reward packs, no danger) and **Swarm** (a power-fantasy horde of 1000-2000+). They pay coins by
+final squad size. Huge hordes are rendered with distance LOD (about 24-triangle "far" models; the switch distance
+shrinks as the crowd grows), so a 2000-strong carpet costs about the same as 300 detailed enemies.
+
 Four worlds x four levels: Sun Dunes, Red Canyon, Frozen Wastes, Ember Peak, each with its own boss.
 `npx tsx tools/weapons.ts` compares the weapon types in a fixed arena. `?theme=0..3` previews a world.
 

@@ -6,7 +6,9 @@ import * as M from './models';
 import { addAnimAttrs, animOutlineMaterial, animToonMaterial, type AnimAttrs } from './materials';
 
 const MAX_SOLDIERS = 320;
-const MAX_ENEMIES = 700;
+const MAX_ENEMIES = 900;
+// Far-LOD capacities: a horde of a couple of thousand must still fit (instances past capacity vanish)
+const FAR_MAX: Partial<Record<EnemyKind, number>> = { grunt: 3400, runner: 1400, mini: 2600, splitter: 300 };
 const MAX_BULLETS = 400;
 const FLASH_TIME = 0.14;
 // big units flash less so their model stays readable under heavy fire
@@ -57,6 +59,9 @@ const hash01 = (id: number) => {
 export class Crowd {
   private soldiers: Unit;
   private enemies = {} as Record<EnemyKind, Unit>;
+  private far = {} as Partial<Record<EnemyKind, Unit>>;
+  /** Distance (along the lane) beyond which crowd units switch to their cheap model; shrinks as the crowd grows. */
+  lodDistance = 999;
   private corpseMeshes = {} as Record<CorpseKind, Unit>;
   private corpses: Corpse[] = [];
   private bullets: THREE.InstancedMesh;
@@ -80,7 +85,11 @@ export class Crowd {
     this.enemies.runner = this.unit(M.runnerGeometry(), MAX_ENEMIES, false);
     this.enemies.brute = this.unit(M.bruteGeometry(), 90, true);
     this.enemies.splitter = this.unit(M.splitterGeometry(), 160, false);
-    this.enemies.mini = this.unit(M.miniGeometry(), 400, false);
+    this.enemies.mini = this.unit(M.miniGeometry(), 700, false);
+    this.far.grunt = this.unit(M.gruntFarGeometry(), FAR_MAX.grunt!, false);
+    this.far.runner = this.unit(M.runnerFarGeometry(), FAR_MAX.runner!, false);
+    this.far.mini = this.unit(M.miniFarGeometry(), FAR_MAX.mini!, false);
+    this.far.splitter = this.unit(M.splitterFarGeometry(), FAR_MAX.splitter!, false);
     this.enemies.boss = this.unit(M.bossGeometry('golem'), 2, true, 0.06);
     this.bossVariant = 'golem';
 
@@ -97,7 +106,7 @@ export class Crowd {
     this.shadows = this.inst(
       shadowGeo,
       new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false }),
-      MAX_SOLDIERS + MAX_ENEMIES + 120,
+      MAX_SOLDIERS + MAX_ENEMIES + 700 + 120,
     );
     this.bullets = this.inst(new THREE.BoxGeometry(0.07, 0.07, 0.55), new THREE.MeshBasicMaterial({ color: 0xffffff }), MAX_BULLETS);
 
@@ -270,13 +279,25 @@ export class Crowd {
 
   private drawEnemies(game: Game, dt: number, camera: THREE.Camera) {
     const counts: Record<EnemyKind, number> = { grunt: 0, runner: 0, brute: 0, splitter: 0, mini: 0, boss: 0 };
+    const farCounts: Partial<Record<EnemyKind, number>> = { grunt: 0, runner: 0, mini: 0, splitter: 0 };
     const d = this.dummy;
+    const sq = game.squad;
+    // LOD budget: with few enemies everything is detailed; thousands push the switch distance towards the squad
+    const total = game.enemies.length;
+    this.lodDistance = total < 450 ? 999 : Math.max(11, 42 - (total - 450) / 50);
     let bars = 0;
     for (const e of game.enemies) {
-      const u = this.enemies[e.kind];
-      const i = counts[e.kind];
+      let u = this.enemies[e.kind];
+      const fu = this.far[e.kind];
+      let far = false;
+      if (fu && (Math.abs(e.y - sq.y) > this.lodDistance || counts[e.kind] >= u.max)) {
+        u = fu;
+        far = true;
+      }
+      const i = far ? farCounts[e.kind]! : counts[e.kind];
       if (i >= u.max) continue;
-      counts[e.kind]++;
+      if (far) farCounts[e.kind]!++;
+      else counts[e.kind]++;
       d.position.set(e.x, 0, -e.y);
       d.rotation.set(0, Math.PI, 0);
       d.scale.setScalar(1);
@@ -285,7 +306,7 @@ export class Crowd {
       u.attrs.anim.setXY(i, hash01(e.id) * 6.28, e.awake ? RUN_RATE[e.kind] * (0.9 + hash01(e.id + 7) * 0.2) : 0);
       const f = this.flash.get(e.id);
       u.attrs.flash.setX(i, f ? Math.min(1, f / FLASH_TIME) * FLASH_GAIN[e.kind] : 0);
-      this.pushShadow(e.x, -e.y, SHADOW[e.kind]);
+      if (!far) this.pushShadow(e.x, -e.y, SHADOW[e.kind]);
 
       if (e.kind === 'brute' && e.hp < e.maxHp && bars < 90) {
         const frac = Math.max(0.02, e.hp / e.maxHp);
@@ -306,6 +327,13 @@ export class Crowd {
       const u = this.enemies[k];
       u.mesh.count = counts[k];
       if (u.outline) u.outline.count = counts[k];
+      u.mesh.instanceMatrix.needsUpdate = true;
+      u.attrs.anim.needsUpdate = true;
+      u.attrs.flash.needsUpdate = true;
+    }
+    for (const k of Object.keys(farCounts) as EnemyKind[]) {
+      const u = this.far[k]!;
+      u.mesh.count = farCounts[k]!;
       u.mesh.instanceMatrix.needsUpdate = true;
       u.attrs.anim.needsUpdate = true;
       u.attrs.flash.needsUpdate = true;
@@ -398,7 +426,8 @@ export class Crowd {
   stats() {
     return {
       soldiers: this.soldiers.mesh.count,
-      enemies: Object.values(this.enemies).reduce((a, u) => a + u.mesh.count, 0),
+      enemies: Object.values(this.enemies).reduce((a, u) => a + u.mesh.count, 0) + Object.values(this.far).reduce((a, u) => a + (u?.mesh.count ?? 0), 0),
+      lodDistance: Math.round(this.lodDistance),
       bullets: this.bullets.count,
       corpses: this.corpses.length,
     };

@@ -33,7 +33,7 @@ export function installDebugApi(h: DebugHooks) {
     start: () => h.start(),
     stress: (n = 320) => {
       const g = h.getGame();
-      g.debugSpawn('grunt', n, 12);
+      g.debugSpawn('grunt', n, 12, Math.max(10, n / 16)); // dense carpet, about 2 units per m²
       g.squad.count = Math.max(g.squad.count, 300);
     },
     viewMismatches: () => h.renderer.viewMismatches(h.getGame()),

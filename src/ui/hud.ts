@@ -2,6 +2,7 @@ import { WEAPONS, type Game } from '../sim/game';
 import { THEMES, themeIndexForLevel } from '../render/themes';
 import { UPGRADES, levelOf } from '../meta/upgrades';
 import type { SaveData } from '../meta/save';
+import type { LevelDef } from '../sim/level';
 import type { GameRenderer } from '../render/renderer';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -64,25 +65,29 @@ export class Hud {
     $('coins').textContent = `Coins: ${n}`;
   }
 
-  renderLevels(total: number, unlocked: number, stars: Record<string, number>, selected: number, onPick: (id: number) => void) {
+  /** Level grid in play order, grouped by world. `selected`/`unlocked` are positions (1-based unlocked count). */
+  renderLevels(levels: LevelDef[], unlocked: number, stars: Record<string, number>, selected: number, onPick: (index: number) => void) {
     const host = $('levels');
     host.textContent = '';
-    for (let id = 1; id <= total; id++) {
-      if (id === 1 || themeIndexForLevel(id) !== themeIndexForLevel(id - 1)) {
+    for (let i = 0; i < levels.length; i++) {
+      const lv = levels[i];
+      if (i === 0 || themeIndexForLevel(lv) !== themeIndexForLevel(levels[i - 1])) {
         const h = document.createElement('div');
         h.className = 'lvh';
-        h.textContent = THEMES[themeIndexForLevel(id)].name.toUpperCase();
+        h.textContent = THEMES[themeIndexForLevel(lv)].name.toUpperCase();
         host.appendChild(h);
       }
       const b = document.createElement('button');
-      b.className = 'lv' + (id === selected ? ' sel' : '');
-      b.disabled = id > unlocked;
-      const st = stars[id] ?? 0;
-      b.innerHTML = `${id}<small>${'★'.repeat(st)}${'☆'.repeat(st ? 3 - st : 0)}</small>`;
-      b.addEventListener('click', () => onPick(id));
+      b.className = 'lv' + (i === selected ? ' sel' : '') + (lv.bonus ? ' bonus' : '');
+      b.disabled = i + 1 > unlocked;
+      const st = stars[lv.id] ?? 0;
+      const label = lv.bonus ? '🎁' : String(lv.id);
+      b.innerHTML = `${label}<small>${lv.bonus ? (st ? 'DONE' : 'BONUS') : '★'.repeat(st) + '☆'.repeat(st ? 3 - st : 0)}</small>`;
+      b.addEventListener('click', () => onPick(i));
       host.appendChild(b);
     }
-    this.startBtn.textContent = `Play level ${selected}`;
+    const cur = levels[selected];
+    this.startBtn.textContent = cur.bonus ? `Play bonus: ${cur.name}` : `Play level ${cur.id}`;
   }
 
   showStart() { this.start.classList.add('show'); }
@@ -110,8 +115,8 @@ export class Hud {
   showShop() { this.shop.classList.add('show'); }
   hideShop() { this.shop.classList.remove('show'); }
 
-  setLevel(id: number) {
-    this.lvl.textContent = `LEVEL ${id}`;
+  setLevel(level: LevelDef) {
+    this.lvl.textContent = level.bonus ? `BONUS · ${level.name.toUpperCase()}` : `LEVEL ${level.id}`;
   }
 
   update(game: Game, r: GameRenderer) {
@@ -147,8 +152,8 @@ export class Hud {
     setTimeout(() => el.remove(), 950);
   }
 
-  showEnd(won: boolean, text: string, btn: string, stars = 0) {
-    ($('endTitle')).textContent = won ? 'VICTORY!' : 'DEFEAT';
+  showEnd(won: boolean, text: string, btn: string, stars = 0, title = 'VICTORY!') {
+    ($('endTitle')).textContent = won ? title : 'DEFEAT';
     $('stars').textContent = won ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '';
     ($('endText')).textContent = text;
     this.endBtn.textContent = btn;

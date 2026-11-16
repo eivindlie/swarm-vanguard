@@ -115,7 +115,7 @@ export type GameEvent =
   | { t: 'counterHit'; x: number; y: number }
   | { t: 'barrelHit'; x: number; y: number }
   | { t: 'bossAdds'; x: number; y: number }
-  | { t: 'blockBreak'; x: number; y: number; label: string }
+  | { t: 'blockBreak'; x: number; y: number; label: string; big: boolean }
   | { t: 'gate'; x: number; y: number; delta: number; label: string }
   | { t: 'squadHit'; lost: number }
   | { t: 'leak'; x: number; y: number }
@@ -222,8 +222,8 @@ export class Game {
   }
 
   /** Debug/test helper: drop `count` enemies just ahead of the squad. */
-  debugSpawn(kind: EnemyKind, count: number, ahead = 14): void {
-    this.spawn({ t: 'enemies', y: this.squad.y + ahead, x: 0, spreadX: LANE_HALF - 0.4, spreadY: 10, count, kind });
+  debugSpawn(kind: EnemyKind, count: number, ahead = 14, spreadY = 10): void {
+    this.spawn({ t: 'enemies', y: this.squad.y + ahead, x: 0, spreadX: LANE_HALF - 0.4, spreadY, count, kind });
   }
 
   private spawn(s: LevelDef['spawns'][number]): void {
@@ -542,17 +542,22 @@ export class Game {
 
   private breakBlock(bl: Block): void {
     const r = bl.reward;
+    this.applyReward(r);
+    const label = r.kind === 'soldiers' ? `+${r.n}` : r.label;
+    this.events.push({ t: 'blockBreak', x: bl.x, y: bl.y, label, big: bl.maxHp >= 300 });
+  }
+
+  private applyReward(r: BlockReward): void {
     if (r.kind === 'soldiers') {
       this.squad.count = Math.min(MAX_SQUAD, this.squad.count + r.n);
       this.squad.maxCount = Math.max(this.squad.maxCount, this.squad.count);
-      this.events.push({ t: 'blockBreak', x: bl.x, y: bl.y, label: `+${r.n}` });
     } else if (r.kind === 'weaponType') {
       this.weapon = r.weapon;
       this.events.push({ t: 'weapon', weapon: r.weapon });
-      this.events.push({ t: 'blockBreak', x: bl.x, y: bl.y, label: r.label });
+    } else if (r.kind === 'multi') {
+      for (const sub of r.rewards) this.applyReward(sub);
     } else {
       this.mods.push({ stat: r.stat, add: r.add, mul: r.mul, source: 'block' });
-      this.events.push({ t: 'blockBreak', x: bl.x, y: bl.y, label: r.label });
     }
   }
 

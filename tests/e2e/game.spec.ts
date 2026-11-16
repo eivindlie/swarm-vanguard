@@ -38,17 +38,18 @@ test('keyboard steers', async ({ page }) => {
   expect(s.squad.x).toBeLessThan(-0.5);
 });
 
-test('perf proxy: draw calls and triangles stay in budget with 300 soldiers + 300 enemies', async ({ page }) => {
+test('perf proxy: a 2000-strong horde vs 300 soldiers stays inside the draw-call and triangle budget', async ({ page }) => {
   await page.goto('/?level=1&seed=1');
   await page.waitForFunction(() => (window as any).__game);
-  await page.evaluate(() => { const g = (window as any).__game; g.start(); g.pause(); g.stress(320); g.step(30); });
+  await page.evaluate(() => { const g = (window as any).__game; g.start(); g.pause(); g.stress(2000); g.step(30); });
   const st = await page.evaluate(() => (window as any).__game.stats());
   console.log('stress stats', st);
-  expect(st.enemies).toBeGreaterThanOrEqual(300);
+  expect(st.enemies).toBeGreaterThanOrEqual(1900); // nothing silently dropped past instance capacity
   expect(st.soldiers).toBeGreaterThanOrEqual(300);
   // budgets for the animated, outlined, themed scene (headless FPS says nothing about phones)
   expect(st.drawCalls).toBeLessThan(90);
   expect(st.triangles).toBeLessThan(330_000);
+  expect(st.lodDistance).toBeLessThan(40); // the LOD kicked in
   await page.screenshot({ path: 'screenshots/stress.png' });
 });
 
@@ -137,4 +138,21 @@ test('upgrade gates, barrels and splitters are on screen without errors', async 
   await page.waitForTimeout(4000);
   const st = await page.evaluate(() => (window as any).__game.stats());
   expect(st.drawCalls).toBeGreaterThan(5);
+});
+
+test('level select shows one bonus level after each world', async ({ page }) => {
+  await page.goto('/?seed=1');
+  await page.waitForFunction(() => (window as any).__game);
+  await expect(page.locator('#levels .lv.bonus')).toHaveCount(4);
+  await expect(page.locator('#levels .lvh')).toHaveCount(4);
+});
+
+test('a bot clears the Jackpot Vault bonus level and gets the bonus payout', async ({ page }) => {
+  await page.goto('/?level=101&seed=1&autoplay=balanced&autostart=1&speed=8');
+  await page.waitForFunction(() => (window as any).__game);
+  await expect(page.locator('#end')).toHaveClass(/show/, { timeout: 50_000 });
+  await expect(page.locator('#endTitle')).toHaveText('BONUS CLEAR!');
+  const save = await page.evaluate(() => JSON.parse(localStorage.getItem('swarmvanguard.save')!));
+  // 60 base + 3 stars (+10) + first clear (+60) + 0.6 per survivor (~300) => well above a normal level
+  expect(save.coins).toBeGreaterThan(250);
 });
