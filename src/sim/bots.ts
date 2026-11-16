@@ -89,7 +89,12 @@ const lanePolicies: Record<string, (g: Game) => number> = {
 
 const arenaOf = (g: Game) => g.level.arena!;
 const holdY = (g: Game) => arenaOf(g).minY + 1.4;
-const keystoneX = (g: Game) => g.keystone?.x ?? 0;
+/** The nearest standing pillar (a siege can have two). */
+const keystoneX = (g: Game) => {
+  let best: number | null = null;
+  for (const b of g.blocks) if (b.keystone && b.hp > 0 && (best === null || Math.abs(b.x - g.squad.x) < Math.abs(best - g.squad.x))) best = b.x;
+  return best ?? 0;
+};
 const clampAX = (g: Game, x: number) => Math.max(-arenaOf(g).half + 0.8, Math.min(arenaOf(g).half - 0.8, x));
 
 /** Enemies ahead of the squad (still to be dealt with) within `range`. */

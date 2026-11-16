@@ -212,14 +212,15 @@ export class Hud {
     // a siege has no distance to cover: the top bar shows the keystone's HP instead of progress
     this.barWrap.style.visibility = siege ? 'hidden' : '';
     this.bossLabel.textContent = siege ? 'KEYSTONE' : 'BOSS';
-    const boss = siege ? game.keystone : game.enemies.find((e) => e.kind === 'boss');
+    const boss = siege ? game.keystoneInfo() : game.enemies.find((e) => e.kind === 'boss');
     this.boss.classList.toggle('show', !!boss);
     if (!siege && boss && 'awake' in boss && boss.awake && !this.bossAnnounced) {
       this.bossAnnounced = true;
       this.showBanner(r.theme.bossName, '⚠ WARNING');
     }
     if (boss) {
-      this.bossBar.style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
+      const max = 'max' in boss ? boss.max : boss.maxHp;
+      this.bossBar.style.width = `${Math.max(0, (boss.hp / max) * 100)}%`;
       this.bossHp.textContent = String(Math.ceil(boss.hp));
     }
     if (!siege) this.bar.style.width = `${Math.min(100, (game.squad.y / game.level.length) * 100)}%`;

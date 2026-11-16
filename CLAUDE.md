@@ -33,7 +33,7 @@ after each commit** (the user has said this is fine). Pushing to `main` deploys 
 - `level.arena` (see `ArenaDef` in `src/sim/level.ts`) switches on every arena rule in `sim/game.ts`; lane levels never take those
   branches (proven by an identical `npm run balance`). Fixed camera, free 2D movement (`Input.targetY`), timed `wave` spawns that
   start awake, a fixed bottom leak line, `tile` pickups, and a `keystone` block whose destruction wins (`collapse` event).
-- `src/levels/siege.ts` builds the four sieges (ids 201-204, `bonus: 'siege'`, placed after each world's jackpot/swarm level).
+- `src/levels/siege.ts` builds the sieges (ids 201-205, `bonus: 'siege'`, placed after each world's jackpot/swarm/blast level). Siege 205 has `twin: true` (two pillars, both must fall; `game.keystoneInfo()` sums them for the HUD bar, bots walk to the nearest).
   Difficulty `k` scales the **keystone HP** (time is the difficulty: escalating waves are the clock); sieges are sized by hand and
   skipped by `tune.ts`. `npx tsx tools/siege-check.ts <id>` runs every policy through one and checks that all runs end.
 - Bots: `policies[name]` dispatches to a siege version when `g.level.arena` is set (`park` = stand under the pillar). In a siege
@@ -47,16 +47,16 @@ after each commit** (the user has said this is fine). Pushing to `main` deploys 
   the browser and headless in Node (bots, tuner, tests). Never import render/DOM code into `src/sim`.
 - Stats are `base + modifier list` (`sim/stats.ts`); shop upgrades, pickups and gates are all just modifiers.
 - `src/render/` draws the sim: `renderer.ts` (orchestrator, camera, fx routing), `crowd.ts` (instanced units, LOD,
-  corpses, flashes), `props.ts` (gates/blocks/barrels), `world.ts` + `themes.ts` (4 worlds), `models.ts`
+  corpses, flashes), `props.ts` (gates/blocks/barrels), `world.ts` + `themes.ts` (5 worlds; world 5 = jungle with fireflies), `models.ts`
   (procedural figures with body-part ids), `materials.ts` (toon + GPU limb animation via `onBeforeCompile`).
-- `src/levels/`: `builder.ts` DSL, `index.ts` (16 levels + 4 bonus levels, ids 101-104), `tuned.json` (generated).
+- `src/levels/`: `builder.ts` DSL, `index.ts` (20 levels + 5 bonus levels, ids 101-105; page 2 = worlds 5-8, added one world at a time, `LEVEL_COUNT` is raised only after the world is tuned and screenshotted), `tuned.json` (generated).
 - `src/sim/bots.ts` are shared by the tuner and `?autoplay=`. `src/meta/` = versioned save, shop upgrades, settings.
 
 ## Rules learned the hard way
 - **Render-only changes must leave `npm run balance` output identical.** Sim changes go in one batch, then one retune.
 - Any new sim mechanic must be playable by `balanced` bot without a new skill, and `k` (horde multiplier in
   `LevelBuilder`) must scale it, otherwise the tuner collapses to the grid floor. The tuner and bots use **zero** shop upgrades.
-- Levels are addressed by **id** (jackpot/swarm bonus levels 101-104, sieges 201-204); `levelIdx`/array position is play order. Tools must use
+- Levels are addressed by **id** (jackpot/swarm/blast bonus levels 101-105, sieges 201-205); `levelIdx`/array position is play order. Tools must use
   `LEVELS.find(l => l.id === id)`, never `LEVELS[id - 1]`.
 - Bullets must spawn in front of a block ahead, or deep crowds shoot over it (regression test exists).
 - Hordes placed right after a shoot-block must sit on the opposite side, or the pinned squad is overrun.
@@ -73,3 +73,9 @@ after each commit** (the user has said this is fine). Pushing to `main` deploys 
 - If standing still ever wins a level, re-roll its layout: `npx tsx tools/reroll.ts <id>` writes `src/levels/variants.json`,
   then `npx tsx tools/tune.ts 0.8 <id>` re-tunes only that level (levels 5 and 7 needed it).
 - The repo is `eivindlie/swarm-vanguard` (public: Pages from a private repo needs a paid plan). Don't change visibility without asking.
+
+## Page 2 (worlds 5+)
+- Page 2 ids restart the difficulty scale (`lid` in `generated`); page-1 rows of `npm run balance` must stay identical (compare ids 1-16).
+- World 5 Jungle Ruins (17-20): `bulwark` enemy (`armor` 0.3 vs rifle/shotgun bullets; rockets, lasers and blasts ignore armor), Stone Idol boss,
+  Blast bonus 105 (barrel chain reactions: barrels caught in a barrel blast go off; rocket splash does not chain, so page 1 is unchanged).
+- Plan for worlds 6-8: Neon City (bombers, 3-way gates, arc weapon), Candy Kingdom (healer totems, temporary buffs), Moon Base (boss rush).

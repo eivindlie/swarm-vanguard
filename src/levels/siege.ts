@@ -18,6 +18,8 @@ export interface SiegeParams {
   tiles1: number;
   tiles10: number;
   coins: number;
+  /** Two pillars (left and right) instead of one: both must fall. */
+  twin?: boolean;
 }
 
 export function siege(p: SiegeParams, k = 1): LevelDef {
@@ -35,9 +37,10 @@ export function siege(p: SiegeParams, k = 1): LevelDef {
   const rng = new Rng(p.id * 31);
 
   // the keystone: a pillar on the right that holds the roof up; shoot it down to win
-  spawns.push({
+  const pillars = p.twin ? [-3.9, 3.9] : [3.9];
+  for (const px of pillars) spawns.push({
     // difficulty `k` scales the pillar's HP: a tougher pillar means a longer siege under ever bigger waves
-    t: 'block', x: 3.9, y: 19.2, w: 2.4, hp: Math.round(p.keystoneHp * k), keystone: true,
+    t: 'block', x: px, y: 19.2, w: 2.4, hp: Math.round(p.keystoneHp * k * (p.twin ? 0.62 : 1)), keystone: true,
     reward: { kind: 'multi', label: 'COLLAPSE', rewards: [{ kind: 'soldiers', n: 60 }] },
   });
 
@@ -102,6 +105,13 @@ export function siegeParams(): Record<number, SiegeParams> {
       escalate: { every: 4, count: 64, growth: 1.1, kind: 'grunt' },
       crates: [{ x: -4.2, y: 9.5, hp: 90, soldiers: 26 }, { x: -4.2, y: 13, hp: 130, soldiers: 0, weapon: 'rocket' }, { x: 4.4, y: 10.5, hp: 80, soldiers: 22 }],
       tiles1: 20, tiles10: 4, coins: 130,
+    },
+    20: {
+      id: 205, world: 4, name: 'Twin Idol Temple', keystoneHp: 5000, hpMul: 4.0, twin: true,
+      waves: [[5, 14, 'grunt'], [9, 22, 'runner'], [13, 32, 'grunt'], [17, 3, 'bulwark'], [21, 32, 'runner'], [26, 50, 'grunt'], [31, 4, 'bulwark'], [36, 60, 'grunt'], [42, 40, 'runner'], [47, 5, 'bulwark'], [53, 70, 'grunt'], [59, 8, 'brute']],
+      escalate: { every: 3.4, count: 80, growth: 1.1, kind: 'grunt' },
+      crates: [{ x: -4.9, y: 9.5, hp: 120, soldiers: 32 }, { x: -4.9, y: 13, hp: 170, soldiers: 0, weapon: 'rocket' }, { x: 4.9, y: 10.5, hp: 110, soldiers: 28 }],
+      tiles1: 22, tiles10: 4, coins: 170,
     },
     16: {
       id: 204, world: 3, name: 'Ember Stronghold', keystoneHp: 6800, hpMul: 3.4,

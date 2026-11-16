@@ -276,9 +276,9 @@ describe('bonus levels and jackpot rewards', () => {
     expect(g.stat('damage')).toBeCloseTo(dmg * 2, 5);
     expect(g.weapon).toBe('laser');
   });
-  it('the game has 16 regular levels plus optional levels after each world, with unique ids', () => {
+  it('the game has its regular levels plus optional levels after each world, with unique ids', () => {
     expect(LEVELS.filter((l) => !l.bonus)).toHaveLength(LEVEL_COUNT);
-    expect(LEVELS.filter((l) => l.bonus && l.bonus !== 'siege')).toHaveLength(4);
+    expect(LEVELS.filter((l) => l.bonus && l.bonus !== 'siege')).toHaveLength(LEVEL_COUNT / 4);
     expect(LEVELS.filter((l) => l.bonus === 'siege').length).toBeGreaterThanOrEqual(1);
     expect(new Set(LEVELS.map((l) => l.id)).size).toBe(LEVELS.length);
     // every optional level sits right after a world's fourth level (or after another optional one)
@@ -536,5 +536,24 @@ describe('page 2 mechanics', () => {
   });
   it('the bulwark def has armour below 1', () => {
     expect(ENEMY_DEFS.bulwark.armor).toBeLessThan(1);
+  });
+});
+
+describe('twin keystones', () => {
+  const arena = {
+    half: 5.5, depth: 24, minY: 1, maxY: 8, bottom: -1.5, startX: 0, startY: 2,
+    escalate: { every: 1e9, count: 20, growth: 1.1, kind: 'grunt' as const },
+  };
+  const pillar = (x: number, hp: number): LevelDef['spawns'][number] => ({
+    t: 'block', x, y: 19.2, w: 2.4, hp, keystone: true, reward: { kind: 'multi', label: 'COLLAPSE', rewards: [{ kind: 'soldiers', n: 5 }] },
+  });
+  it('the siege is won only when the last pillar falls', () => {
+    const lvl: LevelDef = { id: 298, name: 't', length: 24, coins: 1, spawns: [pillar(-3.9, 40), pillar(3.9, 4000)], bonus: 'siege', arena };
+    const g = new Game(lvl, 1, [{ stat: 'startSize', add: 40 }]);
+    for (let i = 0; i < 1500 && g.blocks.some((b) => b.keystone && b.x < 0 && b.hp > 0); i++) g.step({ targetX: -3.9, targetY: 8 });
+    expect(g.keystone!.x).toBeGreaterThan(0); // the left pillar is gone, the right one stands
+    expect(g.phase).toBe('playing'); // the right pillar still stands
+    expect(g.keystoneInfo()!.hp).toBeGreaterThan(0);
+    expect(g.keystone!.x).toBeGreaterThan(0);
   });
 });

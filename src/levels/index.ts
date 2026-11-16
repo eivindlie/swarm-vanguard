@@ -142,12 +142,28 @@ function swarmBonus(id: number, world: number, name: string, sizes: [number, num
     .build(id, name, 0, 70, hpMul, 0);
 }
 
+/** Blast: a power-fantasy of chain reactions. Lines of barrels sit inside dense hordes; one bullet clears a column. */
+function blast(id: number, world: number, name: string): LevelDef {
+  const b = new LevelBuilder(1).meta({ bonus: 'blast', world });
+  b.gates(mul(2), add(30), 12).block(0, 120, multi('BLAST PACK', rocket, soldiers(50), dmgUp), { w: 6, after: 14 });
+  const rounds: [number, number][] = [[90, 5], [150, 6], [220, 7], [300, 8]];
+  for (const [n, barrels] of rounds) {
+    // a carpet of enemies with a barrel line running through it (each barrel is inside the blast radius of the next)
+    b.horde(n, 'grunt', { x: 0, w: 3.4, after: 18 });
+    for (let i = 0; i < barrels; i++) b.barrel(-3 + (6 * i) / (barrels - 1), i === 0 ? 1 : 0);
+    b.horde(Math.round(n / 8), 'bulwark', { x: 0, w: 3, after: 4 });
+    b.gates(mul(2), mul(2), 12);
+  }
+  return b.build(id, name, 0, 70, 1.3, 0);
+}
+
 function makeBonus(K: (id: number) => number): Record<number, LevelDef> {
   return {
     4: jackpot(101, 0, 'Jackpot Vault', 1),
     8: swarmBonus(102, 1, 'Horde Slaughter', [700, 1100, 1500], K),
     12: jackpot(103, 2, 'Treasure Glacier', 1.1),
     16: swarmBonus(104, 3, 'Inferno Swarm', [1000, 1600, 2200], K),
+    20: blast(105, 4, 'Powder Temple'),
   };
 }
 
