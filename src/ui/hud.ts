@@ -29,12 +29,14 @@ export class Hud {
 
   private bossAnnounced = false;
   private shownCount = -1;
+  private elitesAnnounced = new Set<number>();
   private bump = 0;
   private lastT = performance.now();
 
   /** Reset per-level HUD state (call on restart). */
   resetLevelState() {
     this.bossAnnounced = false;
+    this.elitesAnnounced.clear();
     this.shownCount = -1;
     $('banner').classList.remove('show');
     this.hideHint();
@@ -145,6 +147,13 @@ export class Hud {
     const p = r.project(game.squad.x, game.squad.y, 1.3);
     this.count.style.left = `${p.x}px`;
     this.count.style.top = `${p.y - 14}px`;
+    for (const e of game.enemies) {
+      if (e.kind === 'elite' && e.awake && !this.elitesAnnounced.has(e.id)) {
+        this.elitesAnnounced.add(e.id);
+        this.showBanner('WARLORD', '⚠ ELITE');
+        break;
+      }
+    }
     const boss = game.enemies.find((e) => e.kind === 'boss');
     this.boss.classList.toggle('show', !!boss);
     if (boss && boss.awake && !this.bossAnnounced) {

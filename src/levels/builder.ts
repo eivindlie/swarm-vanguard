@@ -47,8 +47,10 @@ export class LevelBuilder {
   /** A dense carpet of enemies across the whole lane: the over-the-top "endless red mass" of the ads. */
   swarm(n: number, kind: EnemyKind = 'grunt', after = 24, density = 16) {
     const count = Math.max(1, Math.round(n * this.k));
-    this.spawns.push({ t: 'enemies', y: this.y, x: 0, spreadX: LANE_HALF_SPAWN, spreadY: Math.max(5, count / density), count, kind });
-    this.y += after + count / density;
+    // a packed grid carpet: rows of ~14 across the lane, 0.55 apart
+    const rows = Math.ceil(count / (Math.floor((2 * LANE_HALF_SPAWN) / 0.55) + 1));
+    this.spawns.push({ t: 'enemies', y: this.y, x: 0, spreadX: LANE_HALF_SPAWN, spreadY: Math.max(5, count / density), count, kind, grid: true });
+    this.y += after + rows * 0.55;
     return this;
   }
   private extra: Partial<LevelDef> = {};

@@ -549,3 +549,34 @@ export function chimneyGeometry(): THREE.BufferGeometry {
     { geo: box(2.4, 0.5, 2.4), color: 0x2f2029, pos: [0, 0.25, 0] },
   ]);
 }
+
+// ------------------------------------------------------------------- elite
+
+/** The Warlord: an armoured hero with a horned helmet and a war hammer, bigger than a brute, with a gold trim. */
+export function eliteGeometry(): THREE.BufferGeometry {
+  const steel = 0x4b5568;
+  const dark = 0x2d3442;
+  const gold = 0xe0a820;
+  const bone = 0xf3e6c8;
+  return build([
+    { geo: cap(0.42, 0.5), color: steel, pos: [0, 0.95, 0] },
+    { geo: box(0.7, 0.55, 0.12), color: gold, pos: [0, 1.05, -0.38] }, // chest plate
+    { geo: box(0.86, 0.14, 0.62), color: 0x3b1b12, pos: [0, 0.62, 0] }, // belt
+    { geo: sph(0.3), color: dark, pos: [0, 1.72, -0.04], part: PART.head, pivot: [0, 1.45, 0] },
+    { geo: box(0.4, 0.1, 0.1), color: 0xff4a2a, pos: [0, 1.74, -0.3], part: PART.head, pivot: [0, 1.45, 0] }, // glowing visor
+    { geo: cone(0.1, 0.55), color: bone, pos: [-0.36, 2.0, -0.02], rot: [0, 0, 0.7], part: PART.head, pivot: [0, 1.45, 0] },
+    { geo: cone(0.1, 0.55), color: bone, pos: [0.36, 2.0, -0.02], rot: [0, 0, -0.7], part: PART.head, pivot: [0, 1.45, 0] },
+    { geo: sph(0.3), color: dark, pos: [-0.62, 1.35, 0] }, // pauldrons
+    { geo: sph(0.3), color: dark, pos: [0.62, 1.35, 0] },
+    { geo: cone(0.1, 0.34), color: bone, pos: [-0.66, 1.68, 0] },
+    { geo: cone(0.1, 0.34), color: bone, pos: [0.66, 1.68, 0] },
+    { geo: box(0.3, 0.66, 0.3), color: dark, pos: [-0.24, 0.3, 0], part: PART.legL, pivot: [-0.24, 0.62, 0] },
+    { geo: box(0.3, 0.66, 0.3), color: dark, pos: [0.24, 0.3, 0], part: PART.legR, pivot: [0.24, 0.62, 0] },
+    { geo: box(0.26, 0.7, 0.26), color: steel, pos: [-0.64, 0.98, -0.04], part: PART.armL, pivot: [-0.64, 1.3, 0] },
+    { geo: box(0.26, 0.7, 0.26), color: steel, pos: [0.64, 0.98, -0.04], part: PART.armR, pivot: [0.64, 1.3, 0] },
+    { geo: sph(0.2), color: gold, pos: [-0.64, 0.58, -0.04], part: PART.armL, pivot: [-0.64, 1.3, 0] },
+    { geo: sph(0.2), color: gold, pos: [0.64, 0.58, -0.04], part: PART.armR, pivot: [0.64, 1.3, 0] },
+    { geo: cyl(0.07, 0.07, 1.3), color: 0x5a3a22, pos: [0.7, 0.7, -0.34], rot: [-0.5, 0, 0], part: PART.armR, pivot: [0.64, 1.3, 0] }, // hammer handle
+    { geo: box(0.55, 0.4, 0.4), color: 0x9aa3b2, pos: [0.7, 1.25, -0.72], part: PART.armR, pivot: [0.64, 1.3, 0] }, // hammer head
+  ]);
+}

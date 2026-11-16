@@ -52,5 +52,7 @@ after each commit** (the user has said this is fine). Pushing to `main` deploys 
 - Visual scale of units is render-only (`SOLDIER_SCALE`/`ENEMY_SCALE` in `crowd.ts`); hit boxes live in the sim.
 - Pace is `GAME_SPEED` (1.25x sim clock) in `src/main.ts`; weapon ranges are in `WEAPONS` (`sim/game.ts`) and changing
   them needs a retune.
+- Elites (`elite` kind, `grind`+`holds` in `ENEMY_DEFS`) stand at the squad, pin it and eat soldiers until killed; swarm carpets use `grid: true` spawns.
+- Menu: the big button continues from the furthest unlocked level; tapping a level plays exactly that one.
 - Known: levels 5 and 7 are still won by standing still (the tuner falls back there).
 - The repo is `eivindlie/swarm-vanguard` (public: Pages from a private repo needs a paid plan). Don't change visibility without asking.

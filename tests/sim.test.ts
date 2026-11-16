@@ -314,3 +314,53 @@ describe('blocks are walls the squad can break', () => {
     }
   });
 });
+
+describe('elites and carpets', () => {
+  it('an elite survives contact and grinds the squad until it is killed', () => {
+    const g = withSquad([{ t: 'enemies', y: 14, x: 0, spreadX: 0, spreadY: 0, count: 1, kind: 'elite', hp: 99999 }], 40);
+    const start = g.squad.count;
+    for (let i = 0; i < 400 && g.phase === 'playing'; i++) g.step({ targetX: 0 });
+    expect(g.enemies.some((e) => e.kind === 'elite')).toBe(true); // still alive
+    expect(g.squad.count).toBeLessThan(start); // and it ate soldiers
+  });
+  it('an elite can be shot down, and the kill event carries its id', () => {
+    const g = withSquad([{ t: 'enemies', y: 25, x: 0, spreadX: 0, spreadY: 0, count: 1, kind: 'elite' }], 60);
+    let killId = 0;
+    for (let i = 0; i < 900 && g.enemies.length; i++) {
+      g.step({ targetX: 0 });
+      for (const e of g.events) if (e.t === 'kill' && e.kind === 'elite') killId = e.id;
+    }
+    expect(g.enemies.length).toBe(0);
+    expect(killId).toBeGreaterThan(0);
+  });
+  it('grid carpets pack into rows across the lane without overlapping bodies', () => {
+    const g = new Game(tiny([{ t: 'enemies', y: 30, x: 0, spreadX: 3.7, spreadY: 5, count: 140, kind: 'grunt', grid: true }], 200), 1);
+    const es = g.enemies;
+    expect(es.length).toBe(140);
+    for (const e of es) expect(Math.abs(e.x)).toBeLessThanOrEqual(3.7 + 0.01);
+    let minD = Infinity;
+    for (let i = 0; i < es.length; i++) for (let j = i + 1; j < es.length; j++) minD = Math.min(minD, Math.hypot(es[i].x - es[j].x, es[i].y - es[j].y));
+    expect(minD).toBeGreaterThan(0.25);
+    const ys = new Set(es.map((e) => Math.round(e.y / 0.55)));
+    expect(ys.size).toBeGreaterThanOrEqual(8); // ~10 rows of 14
+  });
+});
+
+describe('an elite pins the squad', () => {
+  it('the squad stops advancing while an elite touches it and moves on once the elite is dead', () => {
+    const g = withSquad([{ t: 'enemies', y: 14, x: 0, spreadX: 0, spreadY: 0, count: 1, kind: 'elite', hp: 500 }], 250);
+    let pinnedY = -1;
+    let pinnedTicks = 0;
+    for (let i = 0; i < 1500 && g.phase === 'playing'; i++) {
+      const y0 = g.squad.y;
+      g.step({ targetX: 0 });
+      if (g.enemies.some((e) => e.kind === 'elite') && Math.abs(g.squad.y - y0) < 1e-9 && g.tick > 20) {
+        pinnedTicks++;
+        pinnedY = g.squad.y;
+      }
+    }
+    expect(pinnedTicks).toBeGreaterThan(10); // it did hold the squad for a while
+    expect(g.enemies.some((e) => e.kind === 'elite')).toBe(false); // and was killed
+    expect(g.squad.y).toBeGreaterThan(pinnedY); // the squad resumed its advance
+  });
+});

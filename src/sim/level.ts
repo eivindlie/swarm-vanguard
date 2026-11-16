@@ -13,7 +13,8 @@ export interface GateSide {
   label?: string;
 }
 // splitter: bursts into three minis when shot; mini: small fast swarm unit
-export type EnemyKind = 'grunt' | 'runner' | 'brute' | 'splitter' | 'mini' | 'boss';
+// elite: a hero that does not die on contact but grinds the squad down until it is killed (like the boss)
+export type EnemyKind = 'grunt' | 'runner' | 'brute' | 'splitter' | 'mini' | 'elite' | 'boss';
 
 export type BlockReward =
   | { kind: 'soldiers'; n: number }
@@ -23,7 +24,7 @@ export type BlockReward =
   | { kind: 'weapon'; stat: 'damage' | 'fireInterval' | 'pierce' | 'spread'; add?: number; mul?: number; label: string };
 
 export type Spawn =
-  | { t: 'enemies'; y: number; x: number; spreadX: number; spreadY: number; count: number; kind: EnemyKind; hp?: number }
+  | { t: 'enemies'; y: number; x: number; spreadX: number; spreadY: number; count: number; kind: EnemyKind; hp?: number; grid?: boolean }
   /** Counting block: value grows with every bullet that hits it; collected by walking through it. */
   | { t: 'counter'; y: number; x: number; w: number; start: number; perHit: number; max: number }
   | { t: 'gates'; y: number; left: GateSide; right: GateSide }

@@ -33,8 +33,10 @@ export const MAX_SQUAD = 300; // hard cap: keeps rendering/balance sane
 export interface EnemyDef {
   hp: number;
   speed: number;
-  contactDmg: number;
+  contactDmg: number; // soldiers lost on contact (grinders: soldiers lost PER SECOND while touching)
   radius: number;
+  grind?: boolean; // survives contact and keeps eating the squad until killed
+  holds?: boolean; // stops walking once it touches the squad and pins it in place until it is dead
 }
 export const ENEMY_DEFS: Record<EnemyKind, EnemyDef> = {
   grunt: { hp: 3, speed: 2, contactDmg: 1, radius: 0.3 },
@@ -42,7 +44,8 @@ export const ENEMY_DEFS: Record<EnemyKind, EnemyDef> = {
   brute: { hp: 24, speed: 1.4, contactDmg: 6, radius: 0.65 },
   splitter: { hp: 14, speed: 1.5, contactDmg: 2, radius: 0.5 },
   mini: { hp: 2, speed: 3.2, contactDmg: 1, radius: 0.22 },
-  boss: { hp: 400, speed: 0.8, contactDmg: 14, radius: 1.6 }, // contactDmg = soldiers lost per second while touching
+  elite: { hp: 90, speed: 2.4, contactDmg: 9, radius: 0.75, grind: true, holds: true },
+  boss: { hp: 400, speed: 0.8, contactDmg: 14, radius: 1.6, grind: true },
 };
 
 export interface Enemy {
@@ -180,6 +183,7 @@ export class Game {
   weapon: WeaponType = 'rifle';
   private fireCd = 0;
   private grindAcc = 0;
+  private held = false; // an elite is touching the squad: the squad cannot advance
   private bossPhase = 0;
   private nextId = 1;
   private spawnIdx = 0;
@@ -236,12 +240,17 @@ export class Game {
   private spawn(s: LevelDef['spawns'][number]): void {
     if (s.t === 'enemies') {
       const def = ENEMY_DEFS[s.kind];
+      // grid = a packed, slightly jittered carpet (the "endless red mass"); otherwise a loose random scatter
+      const sp = 0.55;
+      const cols = Math.max(1, Math.floor((2 * s.spreadX) / sp) + 1);
       for (let i = 0; i < s.count; i++) {
+        const gx = s.x + ((i % cols) - (cols - 1) / 2) * sp + this.rng.range(-0.1, 0.1);
+        const gy = s.y + Math.floor(i / cols) * sp + this.rng.range(-0.1, 0.1);
         this.enemies.push({
           id: this.nextId++,
           kind: s.kind,
-          x: clamp(s.x + this.rng.range(-s.spreadX, s.spreadX), -LANE_HALF + 0.3, LANE_HALF - 0.3),
-          y: s.y + this.rng.range(0, s.spreadY),
+          x: clamp(s.grid ? gx : s.x + this.rng.range(-s.spreadX, s.spreadX), -LANE_HALF + 0.3, LANE_HALF - 0.3),
+          y: s.grid ? gy : s.y + this.rng.range(0, s.spreadY),
           hp: s.hp ?? def.hp * (this.level.hpMul ?? 1),
           maxHp: s.hp ?? def.hp * (this.level.hpMul ?? 1),
           awake: false,
@@ -303,7 +312,7 @@ export class Game {
     }
     // the squad halts at the finish line until the boss is dead
     const bossAlive = this.enemies.some((e) => e.kind === 'boss' && e.hp > 0);
-    if (!blocked && !(sq.y >= this.level.length && bossAlive)) sq.y += FORWARD_SPEED * DT;
+    if (!blocked && !this.held && !(sq.y >= this.level.length && bossAlive)) sq.y += FORWARD_SPEED * DT;
 
     this.streamSpawns();
 
@@ -394,6 +403,17 @@ export class Game {
       if (!e.awake) {
         if (e.y - sq.y < ACTIVATE_DIST) e.awake = true;
         else continue;
+      }
+      if (def.holds) {
+        // a holder that touches the squad stands and fights instead of walking through it
+        const ax = this.halfWidth() + def.radius * 0.6;
+        const ay = this.halfDepth() + def.radius * 0.6;
+        const dx = (e.x - sq.x) / ax;
+        const dy = (e.y - sq.y) / ay;
+        if (dx * dx + dy * dy < 1) {
+          e.wobble += DT * 8;
+          continue;
+        }
       }
       // arcade rule: enemies walk straight down the lane, no homing
       e.y -= def.speed * DT;
@@ -580,6 +600,7 @@ export class Game {
     const sq = this.squad;
     const hw = this.halfWidth();
     const hd = this.halfDepth();
+    this.held = false;
     for (const e of this.enemies) {
       if (e.hp <= 0) continue;
       const def = ENEMY_DEFS[e.kind];
@@ -589,8 +610,9 @@ export class Game {
       const ay = hd + def.radius * 0.6;
       const inside = (dx / ax) * (dx / ax) + (dy / ay) * (dy / ay) < 1;
       if (inside) {
-        if (e.kind === 'boss') {
-          // boss grinds the squad down continuously while in contact
+        if (def.holds) this.held = true;
+        if (def.grind) {
+          // bosses and elites grind the squad down continuously while in contact
           this.grindAcc += def.contactDmg * DT;
           const loss = Math.floor(this.grindAcc);
           if (loss > 0) {

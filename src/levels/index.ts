@@ -64,6 +64,8 @@ function generated(id: number, K: (id: number) => number): LevelDef {
     if (id >= 5 && w % 2 === 1) b.horde(Math.round(n * 0.35), 'runner', { x: hx, w: 1.7, after: 8 });
     if (id >= 4 && w % 3 === 2) b.horde(Math.max(2, Math.round(id / 2)), 'brute', { x: hx, w: 1.6, after: 11 });
     if (id >= 6 && w % 3 === 1) b.horde(Math.max(2, Math.round(2 + id / 3)), 'splitter', { x: hx, w: 1.5, after: 10 });
+    // an elite Warlord: tough, does not die on contact and grinds the squad until it is killed
+    if (id >= 6 && w % 4 === 3) b.horde(id >= 12 ? 2 : 1, 'elite', { x: hx, w: 1.2, after: 12 });
     // a gate pair: one decent side, one trap. From level 3 on, many pairs offer an upgrade instead.
     // alternate which side is good (trap on the LEFT first): standing still in the middle always picks the
     // left gate, so it must not be the lucky side by chance in some levels
@@ -88,7 +90,10 @@ function generated(id: number, K: (id: number) => number): LevelDef {
     else b.block(rewardX, Math.round(16 * scale * prog), weapons[Math.floor(rng.next() * weapons.length)]);
   }
   // the last level of a world ends with a mega horde (an endless red mass, as in the ads)
-  if (id % 4 === 0) b.swarm(80 + id * 40, 'grunt', 22);
+  if (id % 4 === 0) {
+    b.horde(1, 'elite', { x: 0, w: 1.0, after: 14 }); // a Warlord leads the carpet
+    b.swarm(80 + id * 40, 'grunt', 22);
+  }
   b.horde(Math.round(14 * scale), 'grunt', { after: 18 });
   return b.build(id, NAMES[id - 1] ?? `Level ${id}`, Math.round(260 * id * 1.3), 20 + id * 5, undefined, 4 + id * 1.2);
 }
