@@ -74,12 +74,14 @@ function refreshToggles() {
   ]);
 }
 
+/** The level the big button continues from: the furthest the player has unlocked (a debug `?level=` overrides it). */
+const frontierIdx = () => (urlLevel ? idxOfId(Number(urlLevel)) : Math.min(save.unlockedLevel, LEVELS.length) - 1);
+
 function refreshMenu() {
   hud.setCoins(save.coins);
-  hud.renderLevels(LEVELS, urlLevel ? LEVELS.length : save.unlockedLevel, save.stars, levelIdx, (i) => {
-    // tapping a level plays it right away
+  // the big button always continues from the frontier; tapping any unlocked level plays exactly that level
+  hud.renderLevels(LEVELS, urlLevel ? LEVELS.length : save.unlockedLevel, save.stars, frontierIdx(), (i) => {
     restart(LEVELS[i].id);
-    refreshMenu();
     startGame();
   });
   refreshToggles();
@@ -127,7 +129,10 @@ hud.mute.addEventListener('click', () => {
 });
 // audio can only start after a user gesture
 window.addEventListener('pointerdown', () => sfx.unlock(), { passive: true });
-hud.startBtn.addEventListener('click', startGame);
+hud.startBtn.addEventListener('click', () => {
+  restart(LEVELS[frontierIdx()].id);
+  startGame();
+});
 let modsDirty = false; // purchases change the sim modifiers: rebuild the pending game on start
 function onBuy(id: Parameters<typeof buy>[1]) {
   if (buy(save, id)) {
@@ -155,7 +160,7 @@ hud.endBtn.addEventListener('click', () => {
   paused = false;
 });
 hud.menuBtn.addEventListener('click', () => {
-  restart(LEVELS[levelIdx].id);
+  restart(LEVELS[frontierIdx()].id);
   paused = true;
   refreshMenu();
   hud.showStart();

@@ -168,9 +168,7 @@ test('tapping a level in the menu starts that level directly', async ({ page }) 
   await page.locator('#levels .lv', { hasText: /^3/ }).click();
   await expect(page.locator('#start')).not.toHaveClass(/show/);
   await expect(page.locator('#lvl')).toHaveText('LEVEL 3');
-  await page.waitForTimeout(400);
-  const s = await page.evaluate(() => (window as any).__game.getState());
-  expect(s.squad.y).toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => (window as any).__game.getState().squad.y), { timeout: 8000 }).toBeGreaterThan(0);
 });
 
 test('the menu can scroll on touch and the play button is above the level grid, even on a small phone', async ({ page }) => {
@@ -270,4 +268,24 @@ test('PWA files: manifest is valid and every icon it lists exists', async ({ pag
   await page.goto('/');
   await expect(page.locator('link[rel=manifest]')).toHaveAttribute('href', './manifest.webmanifest');
   await expect(page.locator('link[rel=apple-touch-icon]')).toHaveCount(1);
+});
+
+test('the big button always continues from the furthest level; tapping another level plays exactly that level', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('swarmvanguard.save')) {
+      localStorage.setItem('swarmvanguard.save', JSON.stringify({ version: 1, unlockedLevel: 6, coins: 0, stars: { 1: 3, 2: 2, 3: 2, 4: 3 }, upgrades: {} }));
+    }
+  });
+  await page.goto('/?seed=1');
+  await page.waitForFunction(() => (window as any).__game);
+  // position 6 in play order = level 5 (the bonus level before it is optional)
+  await expect(page.locator('#startBtn')).toHaveText('Play level 5');
+  await page.locator('#levels .lv', { hasText: /^2/ }).click();
+  await expect(page.locator('#lvl')).toHaveText('LEVEL 2');
+  // after playing an old level the frontier is unchanged
+  await page.reload();
+  await page.waitForFunction(() => (window as any).__game);
+  await expect(page.locator('#startBtn')).toHaveText('Play level 5');
+  await page.locator('#startBtn').click();
+  await expect(page.locator('#lvl')).toHaveText('LEVEL 5');
 });
