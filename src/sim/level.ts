@@ -10,7 +10,9 @@ export type BlockReward =
   | { kind: 'weapon'; stat: 'damage' | 'fireInterval' | 'pierce' | 'spread'; add?: number; mul?: number; label: string };
 
 export type Spawn =
-  | { t: 'enemies'; y: number; x: number; spreadX: number; spreadY: number; count: number; kind: EnemyKind }
+  | { t: 'enemies'; y: number; x: number; spreadX: number; spreadY: number; count: number; kind: EnemyKind; hp?: number }
+  /** Counting block: value grows with every bullet that hits it; collected by walking through it. */
+  | { t: 'counter'; y: number; x: number; w: number; start: number; perHit: number; max: number }
   | { t: 'gates'; y: number; left: GateSide; right: GateSide }
   | { t: 'block'; y: number; x: number; w: number; hp: number; reward: BlockReward };
 

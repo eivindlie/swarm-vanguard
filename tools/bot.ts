@@ -54,6 +54,8 @@ export const policies: Record<string, Policy> = {
     const pair = nextGatePair(g, 30);
     if (pair) return bestGateX(g, pair);
     const block = g.blocks.filter((b) => b.y > g.squad.y).sort((a, b) => a.y - b.y)[0];
+    const counter = g.counters.filter((c) => c.y > g.squad.y).sort((a, b) => a.y - b.y)[0];
+    if (counter && counter.y - g.squad.y < 30 && (!block || counter.y < block.y)) return clampX(counter.x);
     if (block && block.y - g.squad.y < 30) return clampX(block.x);
     return 0;
   },
@@ -63,6 +65,9 @@ export const policies: Record<string, Policy> = {
     const pair = nextGatePair(g, 16);
     if (pair) return bestGateX(g, pair);
     const dps = (g.stat('damage') * g.squad.count) / g.stat('fireInterval');
+    // a counting block is free value: line up with it while it is in range, unless crowded
+    const counter = g.counters.filter((c) => c.y > g.squad.y).sort((a, b) => a.y - b.y)[0];
+    if (counter && counter.y - g.squad.y < 22 && g.enemies.length < 12) return clampX(counter.x);
     const block = g.blocks.filter((b) => b.y > g.squad.y).sort((a, b) => a.y - b.y)[0];
     if (block) {
       const dist = block.y - g.squad.y;

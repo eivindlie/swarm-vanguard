@@ -20,7 +20,7 @@ export const ENEMY_DEFS: Record<EnemyKind, EnemyDef> = {
   grunt: { hp: 2, speed: 2, contactDmg: 1, radius: 0.3 },
   runner: { hp: 1.5, speed: 4.5, contactDmg: 1, radius: 0.28 },
   brute: { hp: 24, speed: 1.4, contactDmg: 6, radius: 0.65 },
-  boss: { hp: 400, speed: 0.8, contactDmg: 40, radius: 1.6 },
+  boss: { hp: 400, speed: 0.8, contactDmg: 14, radius: 1.6 }, // contactDmg = soldiers lost per second while touching
 };
 
 export interface Enemy {
@@ -52,6 +52,15 @@ export interface Block {
   maxHp: number;
   reward: BlockReward;
 }
+export interface Counter {
+  id: number;
+  x: number;
+  y: number;
+  w: number;
+  value: number;
+  perHit: number;
+  max: number;
+}
 export interface Gate {
   id: number;
   pair: number;
@@ -67,6 +76,7 @@ export type GameEvent =
   | { t: 'hit'; x: number; y: number }
   | { t: 'kill'; x: number; y: number; kind: EnemyKind }
   | { t: 'blockHit'; x: number; y: number }
+  | { t: 'counterHit'; x: number; y: number }
   | { t: 'blockBreak'; x: number; y: number; label: string }
   | { t: 'gate'; x: number; y: number; delta: number; label: string }
   | { t: 'squadHit'; lost: number }
@@ -108,9 +118,11 @@ export class Game {
   bullets: Bullet[] = [];
   blocks: Block[] = [];
   gates: Gate[] = [];
+  counters: Counter[] = [];
   events: GameEvent[] = [];
   kills = 0;
   private fireCd = 0;
+  private grindAcc = 0;
   private nextId = 1;
   private spawnIdx = 0;
   private pendingSpawns: LevelDef['spawns'];
@@ -162,12 +174,14 @@ export class Game {
           kind: s.kind,
           x: clamp(s.x + this.rng.range(-s.spreadX, s.spreadX), -LANE_HALF + 0.3, LANE_HALF - 0.3),
           y: s.y + this.rng.range(0, s.spreadY),
-          hp: def.hp,
-          maxHp: def.hp,
+          hp: s.hp ?? def.hp,
+          maxHp: s.hp ?? def.hp,
           awake: false,
           wobble: this.rng.range(0, 6.28),
         });
       }
+    } else if (s.t === 'counter') {
+      this.counters.push({ id: this.nextId++, x: s.x, y: s.y, w: s.w, value: s.start, perHit: s.perHit, max: s.max });
     } else if (s.t === 'gates') {
       const pair = this.nextId++;
       this.gates.push({ id: this.nextId++, pair, x: -LANE_HALF / 2, y: s.y, w: LANE_HALF, side: s.left, used: false });
@@ -212,7 +226,9 @@ export class Game {
         break;
       }
     }
-    if (!blocked) sq.y += FORWARD_SPEED * DT;
+    // the squad halts at the finish line until the boss is dead
+    const bossAlive = this.enemies.some((e) => e.kind === 'boss' && e.hp > 0);
+    if (!blocked && !(sq.y >= this.level.length && bossAlive)) sq.y += FORWARD_SPEED * DT;
 
     this.streamSpawns();
 
@@ -229,6 +245,7 @@ export class Game {
     this.bulletCollisions();
     this.contacts();
     this.gateChecks();
+    this.counterChecks();
     this.cleanup();
 
     // --- end conditions ---
@@ -311,6 +328,18 @@ export class Game {
         }
       }
       if (hitBlock) continue;
+      // counting blocks absorb bullets and grow
+      let hitCounter = false;
+      for (const c of this.counters) {
+        if (Math.abs(b.x - c.x) < c.w / 2 && Math.abs(b.y - c.y) < 0.8) {
+          c.value = Math.min(c.max, c.value + c.perHit);
+          b.pierce = 0;
+          hitCounter = true;
+          this.events.push({ t: 'counterHit', x: b.x, y: b.y });
+          break;
+        }
+      }
+      if (hitCounter) continue;
       // enemies via spatial grid
       const cx = Math.floor(b.x + 8);
       const cy = Math.floor(b.y);
@@ -362,10 +391,14 @@ export class Game {
       const rr = r + def.radius;
       if (dx * dx + dy * dy < rr * rr) {
         if (e.kind === 'boss') {
-          // boss grinds the squad down each tick it is in contact
-          const loss = Math.max(1, Math.round(def.contactDmg * DT * 2));
-          sq.count -= loss;
-          this.events.push({ t: 'squadHit', lost: loss });
+          // boss grinds the squad down continuously while in contact
+          this.grindAcc += def.contactDmg * DT;
+          const loss = Math.floor(this.grindAcc);
+          if (loss > 0) {
+            this.grindAcc -= loss;
+            sq.count -= loss;
+            this.events.push({ t: 'squadHit', lost: loss });
+          }
         } else {
           sq.count -= def.contactDmg;
           e.hp = 0;
@@ -391,12 +424,28 @@ export class Game {
     }
   }
 
+  private counterChecks(): void {
+    const sq = this.squad;
+    const rr = this.squadRadius() * 0.6;
+    for (const c of this.counters) {
+      if (c.value <= 0 || sq.y < c.y) continue;
+      if (Math.abs(sq.x - c.x) <= c.w / 2 + rr) {
+        const gain = Math.floor(c.value);
+        sq.count += gain;
+        sq.maxCount = Math.max(sq.maxCount, sq.count);
+        c.value = 0;
+        this.events.push({ t: 'gate', x: c.x, y: c.y, delta: gain, label: `+${gain}` });
+      }
+    }
+  }
+
   private cleanup(): void {
     const sq = this.squad;
     this.enemies = this.enemies.filter((e) => e.hp > 0 && e.y > sq.y - 3);
     this.bullets = this.bullets.filter((b) => b.pierce > 0);
     this.blocks = this.blocks.filter((b) => b.hp > 0 && b.y > sq.y - 3);
     this.gates = this.gates.filter((g) => g.y > sq.y - 3);
+    this.counters = this.counters.filter((c) => c.value > 0 && c.y > sq.y - 3);
   }
 
   /** Compact, serialisable snapshot for the debug API and bots. */
@@ -410,6 +459,7 @@ export class Game {
       enemies: this.enemies.length,
       bullets: this.bullets.length,
       blocks: this.blocks.length,
+      boss: (() => { const b = this.enemies.find((e) => e.kind === 'boss'); return b ? { hp: Math.ceil(b.hp), max: b.maxHp } : null; })(),
       kills: this.kills,
     };
   }

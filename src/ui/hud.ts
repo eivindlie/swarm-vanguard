@@ -8,6 +8,9 @@ export class Hud {
   private bar = $('bar').querySelector('i') as HTMLElement;
   private lvl = $('lvl');
   private hud = $('hud');
+  private boss = $('boss');
+  private bossBar = $('boss').querySelector('i') as HTMLElement;
+  private bossHp = $('bossHp');
   readonly start = $('start');
   readonly end = $('end');
   readonly startBtn = $<HTMLButtonElement>('startBtn');
@@ -23,6 +26,12 @@ export class Hud {
     const p = r.project(game.squad.x, game.squad.y, 1.3);
     this.count.style.left = `${p.x}px`;
     this.count.style.top = `${p.y - 14}px`;
+    const boss = game.enemies.find((e) => e.kind === 'boss');
+    this.boss.classList.toggle('show', !!boss);
+    if (boss) {
+      this.bossBar.style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
+      this.bossHp.textContent = String(Math.ceil(boss.hp));
+    }
     this.bar.style.width = `${Math.min(100, (game.squad.y / game.level.length) * 100)}%`;
   }
 

@@ -14,6 +14,8 @@ export const level01: LevelDef = {
     { t: 'enemies', y: 85, x: 0, spreadX: 3.4, spreadY: 8, count: 36, kind: 'grunt' },
     { t: 'block', y: 100, x: 2, w: 3, hp: 30, reward: { kind: 'weapon', stat: 'damage', mul: 1.5, label: 'DMG x1.5' } },
     { t: 'enemies', y: 112, x: 0, spreadX: 3.4, spreadY: 10, count: 50, kind: 'grunt' },
+    { t: 'counter', y: 118, x: -2.2, w: 3, start: 4, perHit: 1, max: 40 },
     { t: 'enemies', y: 128, x: 0, spreadX: 2, spreadY: 3, count: 2, kind: 'brute' },
+    { t: 'enemies', y: 146, x: 0, spreadX: 0, spreadY: 0, count: 1, kind: 'boss', hp: 150 },
   ],
 };

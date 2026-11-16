@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Game, LANE_HALF, ENEMY_DEFS, gateLabel, type Block, type Gate } from '../sim/game';
+import { Game, LANE_HALF, gateLabel, type Block, type Counter, type Gate } from '../sim/game';
 import type { EnemyKind } from '../sim/level';
 
 const MAX_SOLDIERS = 320;
@@ -24,6 +24,23 @@ function drawLabel(ctx: CanvasRenderingContext2D, w: number, h: number, text: st
   ctx.strokeText(text, w / 2, h / 2 + h * 0.04);
   ctx.fillStyle = fg;
   ctx.fillText(text, w / 2, h / 2 + h * 0.04);
+}
+
+function drawBlockLabel(ctx: CanvasRenderingContext2D, hp: string, reward: string, rewardColor: string) {
+  ctx.clearRect(0, 0, 256, 128);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  ctx.font = '900 46px system-ui, sans-serif';
+  ctx.lineWidth = 9;
+  ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+  ctx.strokeText(reward, 128, 36);
+  ctx.fillStyle = rewardColor;
+  ctx.fillText(reward, 128, 36);
+  ctx.font = '900 56px system-ui, sans-serif';
+  ctx.strokeText(hp, 128, 94);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(hp, 128, 94);
 }
 
 function gateTexture(text: string, bad: boolean): THREE.CanvasTexture {
@@ -57,6 +74,7 @@ export class GameRenderer {
   private bullets: Inst;
   private blockViews = new Map<number, BlockView>();
   private gateViews = new Map<number, THREE.Mesh>();
+  private counterViews = new Map<number, BlockView>();
   private dummy = new THREE.Object3D();
   private camX = 0;
   private shake = 0;
@@ -179,6 +197,7 @@ export class GameRenderer {
     this.drawBullets(game);
     this.syncBlocks(game.blocks);
     this.syncGates(game.gates);
+    this.syncCounters(game.counters);
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -210,14 +229,12 @@ export class GameRenderer {
       const i = counts[e.kind];
       if (i >= MAX_ENEMIES) continue;
       counts[e.kind]++;
-      const def = ENEMY_DEFS[e.kind];
       const bob = e.awake ? Math.abs(Math.sin(e.wobble)) * 0.1 : 0;
       const baseH = e.kind === 'boss' ? 1.5 : e.kind === 'brute' ? 0.8 : e.kind === 'runner' ? 0.35 : 0.34;
       d.position.set(e.x, baseH + bob, -e.y);
       d.rotation.set(0, e.kind === 'runner' ? Math.PI : 0, 0);
       d.scale.setScalar(1);
       d.updateMatrix();
-      void def;
       mesh.setMatrixAt(i, d.matrix);
     }
     (Object.keys(counts) as EnemyKind[]).forEach((k) => {
@@ -239,10 +256,6 @@ export class GameRenderer {
     }
     this.bullets.count = n;
     this.bullets.instanceMatrix.needsUpdate = true;
-  }
-
-  private blockText(b: Block): string {
-    return b.reward.kind === 'soldiers' ? `${Math.ceil(b.hp)}` : `${Math.ceil(b.hp)}`;
   }
 
   private syncBlocks(blocks: Block[]) {
@@ -274,11 +287,11 @@ export class GameRenderer {
         v = { group, canvas, tex, shown: '' };
         this.blockViews.set(b.id, v);
       }
-      const text = this.blockText(b);
+      const text = `${Math.ceil(b.hp)}`;
       if (text !== v.shown) {
+        const soldiers = b.reward.kind === 'soldiers';
         const reward = b.reward.kind === 'soldiers' ? `+${b.reward.n}` : b.reward.label;
-        void reward;
-        drawLabel(v.canvas.getContext('2d')!, 256, 128, text, null, '#ffffff');
+        drawBlockLabel(v.canvas.getContext('2d')!, text, reward, soldiers ? '#7fc4ff' : '#ffe27a');
         v.tex.needsUpdate = true;
         v.shown = text;
       }
@@ -288,6 +301,49 @@ export class GameRenderer {
         this.scene.remove(v.group);
         v.tex.dispose();
         this.blockViews.delete(id);
+      }
+    }
+  }
+
+  private syncCounters(counters: Counter[]) {
+    const alive = new Set<number>();
+    for (const c of counters) {
+      alive.add(c.id);
+      let v = this.counterViews.get(c.id);
+      if (!v) {
+        const group = new THREE.Group();
+        const box = new THREE.Mesh(new THREE.BoxGeometry(c.w, 0.9, 1.0), new THREE.MeshLambertMaterial({ color: 0xffc21a }));
+        box.position.y = 0.45;
+        group.add(box);
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 128;
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false }));
+        sprite.scale.set(2.4, 1.2, 1);
+        sprite.position.set(0, 1.7, 0.4);
+        sprite.renderOrder = 10;
+        group.add(sprite);
+        group.position.set(c.x, 0, -c.y);
+        this.scene.add(group);
+        v = { group, canvas, tex, shown: '' };
+        this.counterViews.set(c.id, v);
+      }
+      const text = `+${Math.floor(c.value)}`;
+      if (text !== v.shown) {
+        drawLabel(v.canvas.getContext('2d')!, 256, 128, text, null, '#ffe27a');
+        v.tex.needsUpdate = true;
+        v.shown = text;
+        v.group.scale.setScalar(1.12); // little pulse on change
+      }
+      v.group.scale.setScalar(Math.max(1, v.group.scale.x - 0.01));
+    }
+    for (const [id, v] of this.counterViews) {
+      if (!alive.has(id)) {
+        this.scene.remove(v.group);
+        v.tex.dispose();
+        this.counterViews.delete(id);
       }
     }
   }
