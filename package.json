@@ -5,11 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node tools/stamp-sw.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "balance": "tsx tools/balance.ts",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "pwa-check": "npm run build && node tools/pwa-check.mjs"
   },
   "dependencies": {
     "three": "^0.187.0"

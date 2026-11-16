@@ -11,28 +11,35 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Swarm Vanguard" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="48x48" href="./icons/favicon-48.png" />
+  <!-- old inline favicon, kept as a fallback
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231b1b2f'/%3E%3Ccircle cx='22' cy='38' r='7' fill='%232f6fff'/%3E%3Ccircle cx='36' cy='44' r='7' fill='%232f6fff'/%3E%3Ccircle cx='42' cy='30' r='7' fill='%232f6fff'/%3E%3Ccircle cx='30' cy='22' r='7' fill='%236fa0ff'/%3E%3Cpath d='M12 14l10 6-10 4zM52 14l-10 6 10 4z' fill='%23d93636'/%3E%3C/svg%3E" />
+  -->
   <title>Swarm Vanguard</title>
   <style>
-    :root { color-scheme: dark; }
+    :root { color-scheme: dark; --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px); }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
     html, body { margin: 0; height: 100%; background: #111; overflow: hidden; overscroll-behavior: none; font-family: system-ui, -apple-system, sans-serif; }
     body { display: grid; place-items: center; }
     #stage { position: relative; width: min(100vw, calc(100dvh * 9 / 16)); height: 100dvh; overflow: hidden; background: #8fd3f4; touch-action: none; }
     #hud { position: absolute; inset: 0; pointer-events: none; color: #fff; }
-    #top { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; align-items: center; gap: 10px; }
+    /* the in-game HUD stays out of the way while a menu/overlay is open */
+    #stage:has(.overlay.show) #hud { visibility: hidden; }
+    #top { position: absolute; top: calc(16px + var(--sat)); left: 12px; right: 12px; display: flex; align-items: center; gap: 10px; }
     #lvl { font-weight: 800; font-size: 14px; text-shadow: 0 2px 4px #000a; }
     #barWrap { flex: 1; position: relative; }
     #barBoss { position: absolute; right: -4px; top: -9px; font-size: 18px; filter: drop-shadow(0 2px 2px #000a); }
     #bar { width: 100%; height: 10px; background: #0006; border-radius: 6px; overflow: hidden; }
     #bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg,#ffd23a,#ff8a1f); }
     #mute { pointer-events: auto; width: 34px; height: 34px; border-radius: 50%; border: 0; background: #0006; color: #fff; font-size: 16px; }
-    #boss { position: absolute; top: 54px; left: 50%; transform: translateX(-50%); width: 62%; display: none; align-items: center; gap: 8px; font-weight: 900; font-size: 13px; text-shadow: 0 2px 4px #000a; }
+    #boss { position: absolute; top: calc(58px + var(--sat)); left: 50%; transform: translateX(-50%); width: 62%; display: none; align-items: center; gap: 8px; font-weight: 900; font-size: 13px; text-shadow: 0 2px 4px #000a; }
     #boss.show { display: flex; }
     #boss .bb { flex: 1; height: 14px; border-radius: 8px; background: #0008; overflow: hidden; border: 2px solid #fff6; }
     #boss .bb i { display: block; height: 100%; width: 100%; background: linear-gradient(#ff5a5a,#c21f1f); transition: width .08s; }
-    #weapon { position: absolute; left: 12px; bottom: 14px; padding: 4px 10px; border-radius: 10px; background: #0007; font-weight: 900; font-size: 13px; letter-spacing: 1px; color: #ffe27a; }
-    #banner { position: absolute; left: 0; right: 0; top: 24%; text-align: center; font-weight: 900; font-size: 30px; letter-spacing: 2px; color: #fff; -webkit-text-stroke: 5px #7a0f0f; paint-order: stroke fill; text-shadow: 0 4px 0 #3a0808; opacity: 0; pointer-events: none; }
+    #weapon { position: absolute; left: 12px; bottom: calc(14px + var(--sab)); padding: 4px 10px; border-radius: 10px; background: #0007; font-weight: 900; font-size: 13px; letter-spacing: 1px; color: #ffe27a; }
+    #banner { position: absolute; left: 0; right: 0; top: calc(24% + var(--sat) * 0.5); text-align: center; font-weight: 900; font-size: 30px; letter-spacing: 2px; color: #fff; -webkit-text-stroke: 5px #7a0f0f; paint-order: stroke fill; text-shadow: 0 4px 0 #3a0808; opacity: 0; pointer-events: none; }
     #banner small { display: block; font-size: 15px; letter-spacing: 3px; color: #ffd23a; -webkit-text-stroke: 4px #3a0808; margin-bottom: 4px; }
     #banner.show { animation: banner 2.4s ease-out forwards; }
     @keyframes banner { 0% { opacity: 0; transform: scale(2.2); } 12% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: scale(0.96) translateY(-16px); } }
@@ -43,10 +50,20 @@
     #toggles { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
     .tg { border: 2px solid #ffffff44; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 800; color: #fff; background: #ffffff14; }
     .tg.on { background: #3aa65a; border-color: #7be39a; }
+    #install { position: absolute; left: 10px; right: 10px; bottom: calc(10px + var(--sab)); z-index: 8; display: none; align-items: center; gap: 12px; padding: 12px; border-radius: 18px; background: #1b1d44f2; border: 2px solid #ffffff2a; box-shadow: 0 10px 30px #000a; color: #fff; text-align: left; animation: sheet 0.35s ease-out; }
+    #install.show { display: flex; }
+    #install img { width: 52px; height: 52px; border-radius: 12px; flex: none; }
+    #install .itx { flex: 1; font-size: 13px; line-height: 1.3; }
+    #install .itx b { display: block; font-size: 15px; margin-bottom: 2px; }
+    #install .itx span b { display: inline; font-size: 13px; }
+    #install .share { vertical-align: -4px; }
+    #install .ibtns { display: flex; flex-direction: column; gap: 6px; align-items: stretch; flex: none; }
+    #install .btn { padding: 9px 16px; font-size: 15px; border-radius: 12px; }
+    @keyframes sheet { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
     #count { position: absolute; transform: translate(-50%, -100%); font-weight: 900; font-size: 26px; color: #fff; -webkit-text-stroke: 4px #1b3a8a; paint-order: stroke fill; text-shadow: 0 3px 0 #1b3a8a; white-space: nowrap; }
     .pop { position: absolute; transform: translate(-50%, -50%); font-weight: 900; font-size: 22px; color: #ffe27a; -webkit-text-stroke: 4px #000a; paint-order: stroke fill; animation: pop 0.9s ease-out forwards; white-space: nowrap; }
     @keyframes pop { from { opacity: 1; transform: translate(-50%, -50%) scale(0.8); } to { opacity: 0; transform: translate(-50%, -160%) scale(1.3); } }
-    .overlay { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: safe center; overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; gap: 12px; background: #000a; pointer-events: auto; text-align: center; padding: 24px; color: #fff; }
+    .overlay { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: safe center; overflow-y: auto; padding-top: calc(24px + var(--sat)); padding-bottom: calc(24px + var(--sab)); touch-action: pan-y; -webkit-overflow-scrolling: touch; gap: 12px; background: #000a; pointer-events: auto; text-align: center; padding-left: 24px; padding-right: 24px; color: #fff; }
     .overlay.show { display: flex; }
     .overlay h1 { margin: 0; font-size: 33px; white-space: nowrap; text-shadow: 0 4px 0 #0008; }
     .overlay p { margin: 0; opacity: 0.85; }
@@ -84,9 +101,14 @@
       <div id="hint"><div class="hand">👆</div><span>DRAG TO STEER</span></div>
       <div id="count">0</div>
     </div>
-    <div class="overlay show" id="start"><h1>SWARM VANGUARD</h1><p>Drag to steer. Shoot blocks, pick gates, grow your squad. Tap a level to play it.</p><div id="coins"></div><button class="btn" id="startBtn">Tap to start</button><div id="levels"></div><button class="btn ghost" id="shopBtn">Upgrades</button><div id="toggles"></div></div>
+    <div class="overlay show" id="start"><h1>SWARM VANGUARD</h1><p>Drag to steer. Shoot blocks, pick gates, grow your squad. Tap a level to play it.</p><div id="coins"></div><button class="btn" id="startBtn">Tap to start</button><div id="levels"></div><button class="btn ghost" id="shopBtn">Upgrades</button><button class="btn ghost" id="installMenuBtn" style="display:none">📲 Install app</button><div id="toggles"></div></div>
     <div class="overlay" id="shop"><h2>UPGRADES</h2><div id="shopCoins" style="font-weight:800;color:#ffe27a"></div><div id="shopRows" style="display:flex;flex-direction:column;gap:8px;width:100%;align-items:center"></div><button class="btn ghost" id="shopBack">Back</button></div>
     <div class="overlay" id="end"><h1 id="endTitle"></h1><div id="stars"></div><p id="endText"></p><button class="btn" id="endBtn">Retry</button><button class="btn ghost" id="menuBtn">Level select</button></div>
+    <div id="install" role="dialog" aria-label="Install Swarm Vanguard">
+      <img src="./icons/icon-192.png" alt="" width="52" height="52" />
+      <div class="itx"><b>Install Swarm Vanguard</b><span id="installText"></span></div>
+      <div class="ibtns"><button class="btn" id="installBtn">Install</button><button class="tg" id="installLater">Not now</button></div>
+    </div>
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>

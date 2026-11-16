@@ -184,3 +184,90 @@ test('the menu can scroll on touch and the play button is above the level grid, 
   const touch = await page.evaluate(() => getComputedStyle(document.getElementById('start')!).touchAction);
   expect(touch).toBe('pan-y');
 });
+
+test('the HUD and menu respect the iPhone notch (safe-area inset)', async ({ page }) => {
+  await page.goto('/?seed=1&autostart=1');
+  await page.waitForFunction(() => (window as any).__game);
+  // env(safe-area-inset-top) cannot be emulated, so the layout reads it through --sat and we override that
+  await page.evaluate(() => document.documentElement.style.setProperty('--sat', '59px'));
+  const top = await page.locator('#top').boundingBox();
+  expect(top!.y).toBeGreaterThanOrEqual(59);
+  const mute = await page.locator('#mute').boundingBox();
+  expect(mute!.y).toBeGreaterThanOrEqual(59);
+  // the boss bar and the end/menu overlays also clear it
+  const bossTop = await page.evaluate(() => parseFloat(getComputedStyle(document.getElementById('boss')!).top));
+  expect(bossTop).toBeGreaterThanOrEqual(59 + 50);
+  const padTop = await page.evaluate(() => parseFloat(getComputedStyle(document.getElementById('start')!).paddingTop));
+  expect(padTop).toBeGreaterThanOrEqual(59);
+});
+
+test('install prompt: Android shows our sheet on beforeinstallprompt and Not now is remembered', async ({ page }) => {
+  await page.goto('/?seed=1');
+  await page.waitForFunction(() => (window as any).__game);
+  await page.evaluate(() => {
+    const ev: any = new Event('beforeinstallprompt', { cancelable: true });
+    ev.prompt = async () => { (window as any).__promptCalled = true; };
+    ev.userChoice = Promise.resolve({ outcome: 'accepted' });
+    window.dispatchEvent(ev);
+  });
+  await expect(page.locator('#install')).toHaveClass(/show/, { timeout: 5000 });
+  await expect(page.locator('#installBtn')).toHaveText('Install');
+  await page.locator('#installLater').click();
+  await expect(page.locator('#install')).not.toHaveClass(/show/);
+  // reload: dismissed for a week, so no sheet even when the browser offers installation again
+  await page.reload();
+  await page.waitForFunction(() => (window as any).__game);
+  await page.evaluate(() => {
+    const ev: any = new Event('beforeinstallprompt', { cancelable: true });
+    ev.prompt = async () => undefined;
+    ev.userChoice = Promise.resolve({ outcome: 'dismissed' });
+    window.dispatchEvent(ev);
+  });
+  await page.waitForTimeout(2200);
+  await expect(page.locator('#install')).not.toHaveClass(/show/);
+  // ...but the player can still ask for it from the menu
+  await expect(page.locator('#installMenuBtn')).toBeVisible();
+});
+
+test('install prompt: Install triggers the browser prompt and remembers the install', async ({ page }) => {
+  await page.goto('/?seed=1');
+  await page.waitForFunction(() => (window as any).__game);
+  await page.evaluate(() => {
+    const ev: any = new Event('beforeinstallprompt', { cancelable: true });
+    ev.prompt = async () => { (window as any).__promptCalled = true; };
+    ev.userChoice = Promise.resolve({ outcome: 'accepted' });
+    window.dispatchEvent(ev);
+  });
+  await page.locator('#installBtn').click();
+  await expect.poll(() => page.evaluate(() => (window as any).__promptCalled)).toBe(true);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('swarmvanguard.settings') ?? '{}').installed)).toBe(true);
+  await expect(page.locator('#installMenuBtn')).toBeHidden();
+});
+
+test.describe('iPhone', () => {
+  test.use({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1', hasTouch: true });
+  test('install prompt: iOS gets the manual Share -> Add to Home Screen steps', async ({ page }) => {
+    await page.goto('/?seed=1');
+    await page.waitForFunction(() => (window as any).__game);
+    await expect(page.locator('#install')).toHaveClass(/show/, { timeout: 6000 });
+    await expect(page.locator('#installText')).toContainText('Add to Home Screen');
+    await expect(page.locator('#installBtn')).toHaveText('Got it');
+  });
+});
+
+test('PWA files: manifest is valid and every icon it lists exists', async ({ page, request }) => {
+  const res = await request.get('/manifest.webmanifest');
+  expect(res.ok()).toBe(true);
+  const m = await res.json();
+  expect(m.display).toBe('standalone');
+  expect(m.start_url).toBe('./');
+  expect(m.icons.some((i: any) => i.purpose === 'maskable')).toBe(true);
+  expect(m.icons.some((i: any) => i.sizes === '192x192')).toBe(true);
+  expect(m.icons.some((i: any) => i.sizes === '512x512')).toBe(true);
+  for (const i of m.icons) expect((await request.get('/' + i.src)).ok(), i.src).toBe(true);
+  expect((await request.get('/icons/apple-touch-icon.png')).ok()).toBe(true);
+  expect((await request.get('/sw.js')).ok()).toBe(true);
+  await page.goto('/');
+  await expect(page.locator('link[rel=manifest]')).toHaveAttribute('href', './manifest.webmanifest');
+  await expect(page.locator('link[rel=apple-touch-icon]')).toHaveCount(1);
+});

@@ -4,10 +4,12 @@ export interface Settings {
   reduceShake: boolean;
   music: boolean;
   hintSeen: boolean;
+  installed: boolean; // added to the home screen
+  installDismissedAt: number; // ms timestamp of the last "Not now" (0 = never)
 }
 
 const KEY = 'swarmvanguard.settings';
-const DEFAULTS: Settings = { haptics: true, reduceShake: false, music: true, hintSeen: false };
+const DEFAULTS: Settings = { haptics: true, reduceShake: false, music: true, hintSeen: false, installed: false, installDismissedAt: 0 };
 
 export function loadSettings(): Settings {
   try {

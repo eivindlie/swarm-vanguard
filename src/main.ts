@@ -7,6 +7,7 @@ import { Sfx } from './audio/sfx';
 import { loadSave, metaModifiers, recordWin, writeSave } from './meta/save';
 import { buy } from './meta/upgrades';
 import { loadSettings, saveSettings } from './meta/settings';
+import { InstallPrompt } from './ui/install';
 import { installDebugApi } from './debug/api';
 import { policies } from './sim/bots';
 
@@ -35,6 +36,13 @@ renderer.shakeScale = settings.reduceShake ? 0 : 1;
 const controls = new Controls(stage);
 const hud = new Hud();
 const sfx = new Sfx();
+// the home-screen prompt only appears while the menu is open, never mid-run
+const install = new InstallPrompt(settings, () => saveSettings(settings), () => hud.start.classList.contains('show') && !hud.shop.classList.contains('show'));
+
+// offline support + installability (production builds only, so dev servers are never cached)
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => void navigator.serviceWorker.register('./sw.js').catch(() => undefined));
+}
 sfx.musicOn = settings.music;
 
 let game = new Game(LEVELS[levelIdx], seed, metaModifiers(save));
@@ -102,6 +110,7 @@ function startGame() {
   }
   sfx.unlock();
   sfx.startMusic();
+  install.hide();
   hud.hideStart();
   paused = false;
   last = performance.now();
@@ -150,6 +159,7 @@ hud.menuBtn.addEventListener('click', () => {
   paused = true;
   refreshMenu();
   hud.showStart();
+  window.setTimeout(() => install.maybeShow(), 700);
 });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
