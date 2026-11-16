@@ -358,3 +358,18 @@ test('a bot breaks the siege: the roof collapses and the title says SIEGE BROKEN
   const save = await page.evaluate(() => JSON.parse(localStorage.getItem('swarmvanguard.save')!));
   expect(save.stars['201']).toBeGreaterThanOrEqual(1);
 });
+
+test('tips keep coming: a second tip shows after the first one has faded', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('swarmvanguard.settings')) {
+      localStorage.setItem('swarmvanguard.settings', JSON.stringify({ hintSeen: true, haptics: false, music: false }));
+    }
+  });
+  await page.goto('/?level=1&seed=1&autostart=1');
+  await page.waitForFunction(() => (window as any).__game);
+  // the gate tip first, then (after it fades, ~4 s) the block tip as the block comes into view
+  await expect
+    .poll(() => page.evaluate(() => (JSON.parse(localStorage.getItem('swarmvanguard.settings')!).tipsSeen ?? []).length), { timeout: 60_000 })
+    .toBeGreaterThanOrEqual(2);
+});

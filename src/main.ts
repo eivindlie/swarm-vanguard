@@ -278,8 +278,9 @@ function maybeTip(dt: number) {
   };
   if (game.level.arena) {
     // a siege has its own two tips; the lane tips below measure distance ahead of the squad
-    if (!seen('siege')) say('siege', 'DRAG ANYWHERE: SHOOT THE KEYSTONE PILLAR');
-    else if (!seen('tile') && game.pickups.length) say('tile', 'WALK OVER TILES TO COLLECT SOLDIERS');
+    // tiles first: standing under the pillar and shooting it is exactly how a passive squad dies
+    if (!seen('tile') && game.pickups.length) say('tile', 'DRAG AROUND: WALK OVER TILES TO GROW YOUR SQUAD');
+    else if (seen('tile') && !seen('siege')) say('siege', 'THEN SHOOT THE KEYSTONE PILLAR TO WIN');
     return;
   }
   if (!seen('gate') && game.gates.some((g) => !g.used && g.side.op !== 'upgrade' && near(g.y))) say('gate', 'STEER INTO THE BETTER GATE');
@@ -342,7 +343,9 @@ function frame(now: number) {
 
   if (game.phase !== 'playing' && !shownEnd) {
     shownEnd = true;
-    showEndScreen();
+    // a won siege: let the roof come down before the overlay covers it
+    if (game.phase === 'won' && game.level.arena) window.setTimeout(showEndScreen, 1700);
+    else showEndScreen();
   }
   renderer.render(game, dt);
   hud.update(game, renderer);

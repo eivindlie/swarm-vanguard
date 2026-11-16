@@ -58,6 +58,8 @@ export class Hud {
     el.classList.remove('show');
     void el.offsetWidth;
     el.classList.add('show');
+    // `show` must not linger after the fade-out, or tipVisible() blocks every later tip
+    el.addEventListener('animationend', () => el.classList.remove('show'), { once: true });
   }
   tipVisible(): boolean {
     return $('tip').classList.contains('show');

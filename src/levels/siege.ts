@@ -83,28 +83,29 @@ export function siegeParams(): Record<number, SiegeParams> {
   return {
     4: {
       id: 201, world: 0, name: 'Sun Dunes Keep', keystoneHp: 3000, hpMul: 1.2,
-      waves: [[2, 10, 'grunt'], [7, 14, 'grunt'], [12, 8, 'runner'], [17, 20, 'grunt'], [22, 3, 'splitter'], [27, 26, 'grunt'], [32, 14, 'runner'], [37, 34, 'grunt']],
+      // a gentle opening: a squad that collects nothing still lasts ~half a minute, so the first tips can land
+      waves: [[7, 4, 'grunt'], [14, 6, 'grunt'], [21, 10, 'grunt'], [28, 14, 'grunt'], [34, 6, 'runner'], [40, 22, 'grunt'], [46, 3, 'splitter'], [52, 28, 'grunt'], [58, 14, 'runner'], [64, 36, 'grunt']],
       escalate: { every: 5, count: 40, growth: 1.1, kind: 'grunt' },
       crates: [{ x: -4.2, y: 9.5, hp: 40, soldiers: 18 }, { x: -4.2, y: 13, hp: 70, soldiers: 0, weapon: 'rocket' }],
       tiles1: 16, tiles10: 3, coins: 90,
     },
     8: {
       id: 202, world: 1, name: 'Red Canyon Fort', keystoneHp: 4200, hpMul: 1.9,
-      waves: [[2, 12, 'grunt'], [6, 16, 'runner'], [11, 24, 'grunt'], [16, 4, 'splitter'], [21, 22, 'runner'], [26, 34, 'grunt'], [31, 5, 'brute'], [36, 40, 'grunt'], [42, 26, 'runner'], [48, 46, 'grunt']],
+      waves: [[5, 8, 'grunt'], [9, 12, 'runner'], [14, 22, 'grunt'], [19, 4, 'splitter'], [24, 22, 'runner'], [29, 34, 'grunt'], [34, 5, 'brute'], [39, 40, 'grunt'], [45, 26, 'runner'], [51, 46, 'grunt']],
       escalate: { every: 4.5, count: 52, growth: 1.1, kind: 'grunt' },
       crates: [{ x: -4.2, y: 9.5, hp: 70, soldiers: 22 }, { x: -4.2, y: 13, hp: 110, soldiers: 0, weapon: 'laser' }, { x: 4.4, y: 10.5, hp: 60, soldiers: 18 }],
       tiles1: 18, tiles10: 3, coins: 110,
     },
     12: {
       id: 203, world: 2, name: 'Frozen Citadel', keystoneHp: 4000, hpMul: 2.6,
-      waves: [[2, 14, 'grunt'], [6, 20, 'runner'], [10, 28, 'grunt'], [15, 5, 'splitter'], [19, 26, 'runner'], [24, 40, 'grunt'], [29, 6, 'brute'], [34, 48, 'grunt'], [40, 32, 'runner'], [46, 6, 'splitter'], [52, 56, 'grunt']],
+      waves: [[5, 10, 'grunt'], [9, 16, 'runner'], [13, 26, 'grunt'], [18, 5, 'splitter'], [22, 26, 'runner'], [27, 40, 'grunt'], [32, 6, 'brute'], [37, 48, 'grunt'], [43, 32, 'runner'], [49, 6, 'splitter'], [55, 56, 'grunt']],
       escalate: { every: 4, count: 64, growth: 1.1, kind: 'grunt' },
       crates: [{ x: -4.2, y: 9.5, hp: 90, soldiers: 26 }, { x: -4.2, y: 13, hp: 130, soldiers: 0, weapon: 'rocket' }, { x: 4.4, y: 10.5, hp: 80, soldiers: 22 }],
       tiles1: 20, tiles10: 4, coins: 130,
     },
     16: {
       id: 204, world: 3, name: 'Ember Stronghold', keystoneHp: 6800, hpMul: 3.4,
-      waves: [[2, 16, 'grunt'], [5, 24, 'runner'], [9, 32, 'grunt'], [13, 6, 'splitter'], [17, 30, 'runner'], [22, 46, 'grunt'], [27, 7, 'brute'], [32, 56, 'grunt'], [38, 38, 'runner'], [44, 8, 'splitter'], [50, 66, 'grunt'], [56, 8, 'brute']],
+      waves: [[5, 12, 'grunt'], [8, 20, 'runner'], [12, 30, 'grunt'], [16, 6, 'splitter'], [20, 30, 'runner'], [25, 46, 'grunt'], [30, 7, 'brute'], [35, 56, 'grunt'], [41, 38, 'runner'], [47, 8, 'splitter'], [53, 66, 'grunt'], [59, 8, 'brute']],
       escalate: { every: 3.6, count: 76, growth: 1.1, kind: 'grunt' },
       crates: [{ x: -4.2, y: 9.5, hp: 110, soldiers: 30 }, { x: -4.2, y: 13, hp: 160, soldiers: 0, weapon: 'laser' }, { x: 4.4, y: 10.5, hp: 100, soldiers: 26 }],
       tiles1: 22, tiles10: 4, coins: 150,
