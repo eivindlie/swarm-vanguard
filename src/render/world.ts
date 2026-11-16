@@ -158,6 +158,15 @@ function checkerTexture(): THREE.CanvasTexture {
 
 function decorGeometry(kind: DecorKind): THREE.BufferGeometry {
   switch (kind) {
+    case 'skyscraper': return M.skyscraperGeometry();
+    case 'pylon': return M.pylonGeometry();
+    case 'lollipop': return M.lollipopGeometry();
+    case 'candyCane': return M.candyCaneGeometry();
+    case 'gumdrop': return M.gumdropGeometry();
+    case 'cupcake': return M.cupcakeGeometry();
+    case 'dome': return M.domeGeometry();
+    case 'antenna': return M.antennaGeometry();
+    case 'craterRock': return M.craterRockGeometry();
     case 'palm': return M.palmGeometry();
     case 'bush': return M.bushGeometry();
     case 'ruinPillar': return M.ruinPillarGeometry();

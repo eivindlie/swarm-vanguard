@@ -1,6 +1,6 @@
 import type { BossVariant } from './models';
 
-export type DecorKind = 'palm' | 'bush' | 'ruinPillar' | 'temple' | 'mossRock' | 'obelisk' | 'tower' | 'chimney' | 'cactus' | 'rock' | 'snowRock' | 'redRock' | 'mesa' | 'redMesa' | 'iceMesa' | 'arch' | 'pine' | 'crystal' | 'deadTree' | 'lavaSpike' | 'lavaRock';
+export type DecorKind = 'skyscraper' | 'pylon' | 'lollipop' | 'candyCane' | 'gumdrop' | 'cupcake' | 'dome' | 'antenna' | 'craterRock' | 'palm' | 'bush' | 'ruinPillar' | 'temple' | 'mossRock' | 'obelisk' | 'tower' | 'chimney' | 'cactus' | 'rock' | 'snowRock' | 'redRock' | 'mesa' | 'redMesa' | 'iceMesa' | 'arch' | 'pine' | 'crystal' | 'deadTree' | 'lavaSpike' | 'lavaRock';
 
 export interface DecorSpec {
   kind: DecorKind;
@@ -11,7 +11,7 @@ export interface DecorSpec {
 }
 
 export interface Theme {
-  id: 'desert' | 'canyon' | 'frost' | 'volcano' | 'jungle';
+  id: 'desert' | 'canyon' | 'frost' | 'volcano' | 'jungle' | 'neon' | 'candy' | 'moon';
   name: string;
   boss: BossVariant;
   bossName: string;
@@ -215,6 +215,105 @@ export const THEMES: Theme[] = [
       { kind: 'temple', n: 9, minX: 12, maxX: 26, scale: [1.2, 2.0] },
     ],
     ambient: { kind: 'fireflies', color: 0xe8ff7a, n: 90 },
+  },
+  {
+    id: 'neon',
+    name: 'Neon City',
+    boss: 'robot',
+    bossName: 'NEON TITAN',
+    skyTop: '#1a1040',
+    skyMid: '#5a2a8f',
+    skyBottom: '#ff7ad0',
+    fog: 0x6a3a9a,
+    fogNear: 28,
+    fogFar: 78,
+    hemiSky: 0xc8a0ff,
+    hemiGround: 0x2a2050,
+    hemiIntensity: 1.5,
+    sun: 0xff9ae8,
+    sunIntensity: 1.8,
+    sunGlow: '#ff7ad0',
+    cloud: '#b48aff',
+    cloudAlpha: 0.5,
+    groundA: '#2b2f4f',
+    groundB: '#262a47',
+    laneEdge: '#3af0ff',
+    outer: '#1c2038',
+    wall: 3818598,
+    postBody: 2764880,
+    postCap: 16726736,
+    decor: [
+      { kind: 'skyscraper', n: 70, minX: 7, maxX: 30, scale: [1.0, 2.4] },
+      { kind: 'pylon', n: 60, minX: 5.2, maxX: 11, scale: [0.9, 1.4] },
+    ],
+    ambient: { kind: 'embers', color: 0x3af0ff, n: 80 },
+  },
+  {
+    id: 'candy',
+    name: 'Candy Kingdom',
+    boss: 'candy',
+    bossName: 'GUMMY KING',
+    skyTop: '#7ad0ff',
+    skyMid: '#ffc4e6',
+    skyBottom: '#fff4c8',
+    fog: 16767214,
+    fogNear: 34,
+    fogFar: 86,
+    hemiSky: 16773375,
+    hemiGround: 14195392,
+    hemiIntensity: 1.8,
+    sun: 16773312,
+    sunIntensity: 2.1,
+    sunGlow: '#fff4d8',
+    cloud: '#ffffff',
+    cloudAlpha: 0.9,
+    groundA: '#ffb3d1',
+    groundB: '#ffa3c7',
+    laneEdge: '#ffffff',
+    outer: '#f58fb8',
+    wall: 14707098,
+    postBody: 12732030,
+    postCap: 16773754,
+    decor: [
+      { kind: 'lollipop', n: 90, minX: 5.2, maxX: 20, scale: [0.9, 1.8] },
+      { kind: 'candyCane', n: 60, minX: 5.2, maxX: 16, scale: [0.9, 1.6] },
+      { kind: 'gumdrop', n: 80, minX: 4.9, maxX: 20, scale: [0.7, 1.8] },
+      { kind: 'cupcake', n: 16, minX: 12, maxX: 28, scale: [1.6, 3.0] },
+    ],
+    ambient: { kind: 'snow', color: 0xffffff, n: 90 },
+  },
+  {
+    id: 'moon',
+    name: 'Moon Base',
+    boss: 'lunar',
+    bossName: 'LUNAR WARDEN',
+    skyTop: '#05060f',
+    skyMid: '#1a2040',
+    skyBottom: '#4a5a90',
+    fog: 2764880,
+    fogNear: 40,
+    fogFar: 95,
+    hemiSky: 11584767,
+    hemiGround: 3160144,
+    hemiIntensity: 1.4,
+    sun: 15266047,
+    sunIntensity: 2.4,
+    sunGlow: '#c8dcff',
+    cloud: '#7080b0',
+    cloudAlpha: 0.25,
+    groundA: '#9aa0ad',
+    groundB: '#8d93a1',
+    laneEdge: '#6ae0ff',
+    outer: '#6f7686',
+    wall: 8226458,
+    postBody: 4936808,
+    postCap: 16738890,
+    decor: [
+      { kind: 'craterRock', n: 130, minX: 4.9, maxX: 22, scale: [0.6, 2.2] },
+      { kind: 'dome', n: 12, minX: 12, maxX: 30, scale: [1.2, 2.2] },
+      { kind: 'antenna', n: 40, minX: 5.4, maxX: 15, scale: [0.9, 1.8] },
+    ],
+    ambient: { kind: 'dust', color: 0xcfd8ff, n: 60 },
   },
 ];
 

@@ -143,7 +143,7 @@ export function bruteGeometry(): THREE.BufferGeometry {
   ]);
 }
 
-export type BossVariant = 'golem' | 'ogre' | 'frost' | 'demon' | 'idol';
+export type BossVariant = 'golem' | 'ogre' | 'frost' | 'demon' | 'idol' | 'robot' | 'candy' | 'lunar';
 
 /** Four bosses on one animated skeleton, differentiated by palette and silhouette. */
 export function bossGeometry(v: BossVariant): THREE.BufferGeometry {
@@ -153,6 +153,9 @@ export function bossGeometry(v: BossVariant): THREE.BufferGeometry {
     frost: { skin: 0x9fd8ff, dark: 0x5fa3d6, accent: 0xffffff, trim: 0xe6f6ff },
     demon: { skin: 0x3a2330, dark: 0x1d1119, accent: 0xff7a1a, trim: 0xff5a2a },
     idol: { skin: 0x7f8f6a, dark: 0x4f6240, accent: 0x5af0d0, trim: 0xc7d99a },
+    robot: { skin: 0x3a4466, dark: 0x1c2238, accent: 0xff3ad0, trim: 0x3af0ff },
+    candy: { skin: 0xff8fc4, dark: 0xc2467e, accent: 0xfff27a, trim: 0xffffff },
+    lunar: { skin: 0xd8dde6, dark: 0x8b93a6, accent: 0x6ae0ff, trim: 0xff6a4a },
   }[v];
   const parts: Part[] = [
     { geo: box(2.1, 1.9, 1.4), color: pal.skin, pos: [0, 2.15, 0] },
@@ -187,6 +190,38 @@ export function bossGeometry(v: BossVariant): THREE.BufferGeometry {
     }
     parts.push({ geo: sph(0.5), color: 0x4a8a3c, pos: [-1.45, 3.1, 0.1] }); // moss on the shoulders
     parts.push({ geo: sph(0.4), color: 0x4a8a3c, pos: [1.5, 3.2, 0.1] });
+  } else if (v === 'robot') {
+    // a neon mech: boxy head with a cyan visor strip, antennae and magenta chest core
+    head.push({ geo: box(1.1, 0.8, 0.95), color: pal.skin, pos: [0, 3.5, -0.05], ...H });
+    head.push({ geo: box(0.95, 0.16, 0.1), color: pal.trim, pos: [0, 3.55, -0.55], ...H });
+    head.push({ geo: cyl(0.04, 0.04, 0.9, 5), color: pal.dark, pos: [-0.4, 4.3, 0], ...H });
+    head.push({ geo: cyl(0.04, 0.04, 0.7, 5), color: pal.dark, pos: [0.4, 4.2, 0], ...H });
+    head.push({ geo: sph(0.1), color: pal.accent, pos: [-0.4, 4.78, 0], ...H });
+    head.push({ geo: sph(0.1), color: pal.trim, pos: [0.4, 4.58, 0], ...H });
+    parts.push({ geo: box(0.9, 0.9, 0.12), color: pal.accent, pos: [0, 2.3, -0.74] });
+    for (let i = 0; i < 3; i++) parts.push({ geo: box(2.0, 0.07, 0.1), color: pal.trim, pos: [0, 1.7 + i * 0.3, -0.72] });
+  } else if (v === 'candy') {
+    // a giant gummy bear: round soft head, button eyes, icing belt and lollipop shoulders
+    head.push({ geo: sph(0.8), color: pal.skin, pos: [0, 3.5, -0.05], ...H });
+    head.push({ geo: sph(0.32), color: pal.skin, pos: [-0.62, 4.1, 0], ...H });
+    head.push({ geo: sph(0.32), color: pal.skin, pos: [0.62, 4.1, 0], ...H });
+    head.push({ geo: sph(0.12), color: 0x3a1a2a, pos: [-0.28, 3.6, -0.7], ...H });
+    head.push({ geo: sph(0.12), color: 0x3a1a2a, pos: [0.28, 3.6, -0.7], ...H });
+    head.push({ geo: box(0.4, 0.1, 0.1), color: pal.dark, pos: [0, 3.25, -0.74], ...H });
+    parts.push({ geo: box(2.2, 0.4, 1.5), color: pal.trim, pos: [0, 1.55, 0] });
+    for (let i = -2; i <= 2; i++) parts.push({ geo: sph(0.14), color: i % 2 ? pal.accent : pal.dark, pos: [i * 0.4, 2.7, -0.74] });
+    parts.push({ geo: cyl(0.06, 0.06, 1.2, 5), color: pal.trim, pos: [-1.6, 3.9, 0.1] });
+    parts.push({ geo: sph(0.4), color: pal.accent, pos: [-1.6, 4.6, 0.1] });
+  } else if (v === 'lunar') {
+    // a moon-base colossus: helmeted dome head, visor glow, antenna dish and warning stripes
+    head.push({ geo: sph(0.85), color: pal.skin, pos: [0, 3.5, -0.05], ...H });
+    head.push({ geo: box(1.0, 0.4, 0.2), color: pal.accent, pos: [0, 3.55, -0.7], ...H });
+    head.push({ geo: cyl(0.04, 0.04, 0.8, 5), color: pal.dark, pos: [0.5, 4.4, 0], ...H });
+    head.push({ geo: cone(0.3, 0.2), color: pal.trim, pos: [0.5, 4.85, 0], rot: [Math.PI, 0, 0], ...H });
+    parts.push({ geo: box(1.2, 1.0, 0.3), color: pal.dark, pos: [0, 2.3, 0.9] }); // life-support pack
+    for (let i = 0; i < 4; i++) parts.push({ geo: box(0.35, 0.08, 0.1), color: pal.trim, pos: [-0.75 + i * 0.5, 1.45, -0.74], rot: [0, 0, 0.5] });
+    parts.push({ geo: sph(0.4), color: pal.dark, pos: [-1.45, 3.1, 0.1] });
+    parts.push({ geo: sph(0.4), color: pal.dark, pos: [1.5, 3.2, 0.1] });
   } else if (v === 'ogre') {
     head.push({ geo: sph(0.72), color: pal.skin, pos: [0, 3.5, -0.05], ...H });
     head.push({ geo: cone(0.18, 0.85), color: pal.trim, pos: [-0.5, 4.15, 0], rot: [0, 0, 0.5], ...H });
@@ -217,6 +252,113 @@ export function bossGeometry(v: BossVariant): THREE.BufferGeometry {
     for (let i = 0; i < 4; i++) parts.push({ geo: box(1.5 - i * 0.2, 0.08, 0.1), color: pal.accent, pos: [0, 2.9 - i * 0.38, -0.72] }); // lava cracks
   }
   return build([...parts, ...head]);
+}
+
+
+// ------------------------------------------------------------------- page 2 enemies and decor
+
+/** Bomber: a round walking bomb with a glowing fuse and a hazard band (explodes on contact for heavy losses). */
+export function bomberGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: sph(0.3), color: 0x2a2f45, pos: [0, 0.42, 0] },
+    { geo: box(0.64, 0.08, 0.64), color: 0xffd22a, pos: [0, 0.42, 0] },
+    { geo: cyl(0.04, 0.04, 0.2, 5), color: 0x777777, pos: [0, 0.78, 0] },
+    { geo: sph(0.08), color: 0xff3a2a, pos: [0, 0.9, 0] },
+    { geo: box(0.1, 0.2, 0.1), color: 0x1c2030, pos: [-0.1, 0.1, 0], part: PART.legL, pivot: [-0.1, 0.2, 0] },
+    { geo: box(0.1, 0.2, 0.1), color: 0x1c2030, pos: [0.1, 0.1, 0], part: PART.legR, pivot: [0.1, 0.2, 0] },
+    { geo: sph(0.05), color: 0xff3a2a, pos: [-0.1, 0.5, -0.27] },
+    { geo: sph(0.05), color: 0xff3a2a, pos: [0.1, 0.5, -0.27] },
+  ]);
+}
+
+/** Jelly: a wobbly candy blob with a cherry on top. */
+export function jellyGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: sph(0.36), color: 0xff6aa8, pos: [0, 0.38, 0], scale: [1, 0.9, 1] },
+    { geo: sph(0.2), color: 0xff9ccb, pos: [-0.1, 0.52, -0.2] },
+    { geo: sph(0.05), color: 0x2a1020, pos: [-0.12, 0.5, -0.34], part: PART.head, pivot: [0, 0.4, 0] },
+    { geo: sph(0.05), color: 0x2a1020, pos: [0.12, 0.5, -0.34], part: PART.head, pivot: [0, 0.4, 0] },
+    { geo: sph(0.09), color: 0xd01a3a, pos: [0, 0.8, 0] },
+    { geo: box(0.1, 0.12, 0.1), color: 0xc2467e, pos: [-0.12, 0.06, 0], part: PART.legL, pivot: [-0.12, 0.14, 0] },
+    { geo: box(0.1, 0.12, 0.1), color: 0xc2467e, pos: [0.12, 0.06, 0], part: PART.legR, pivot: [0.12, 0.14, 0] },
+  ]);
+}
+
+/** Drone: a hovering moon-base bot with a single lens. */
+export function droneGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: sph(0.3), color: 0xc9d0dc, pos: [0, 0.7, 0], scale: [1.2, 0.8, 1.2] },
+    { geo: sph(0.12), color: 0xff4a3a, pos: [0, 0.72, -0.3] },
+    { geo: box(0.9, 0.05, 0.14), color: 0x7d869a, pos: [0, 0.86, 0], part: PART.head, pivot: [0, 0.86, 0] },
+    { geo: cone(0.12, 0.25), color: 0x7d869a, pos: [0, 0.35, 0], rot: [Math.PI, 0, 0], part: PART.legL, pivot: [0, 0.5, 0] },
+  ]);
+}
+
+export function skyscraperGeometry(): THREE.BufferGeometry {
+  const parts: Part[] = [{ geo: box(1.6, 5.2, 1.6), color: 0x232845, pos: [0, 2.6, 0] }];
+  for (let i = 0; i < 7; i++) {
+    const c = [0xff3ad0, 0x3af0ff, 0xfff27a][i % 3];
+    parts.push({ geo: box(1.64, 0.14, 1.64), color: c, pos: [0, 0.6 + i * 0.7, 0] });
+  }
+  parts.push({ geo: cyl(0.04, 0.04, 1.2, 5), color: 0x777777, pos: [0, 5.8, 0] });
+  parts.push({ geo: sph(0.1), color: 0xff3a2a, pos: [0, 6.45, 0] });
+  return build(parts);
+}
+export function pylonGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: cyl(0.1, 0.14, 2.6, 6), color: 0x3a4466, pos: [0, 1.3, 0] },
+    { geo: box(1.2, 0.5, 0.1), color: 0xff3ad0, pos: [0, 2.7, 0] },
+    { geo: box(0.9, 0.3, 0.12), color: 0x3af0ff, pos: [0, 2.2, 0] },
+  ]);
+}
+export function lollipopGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: cyl(0.06, 0.06, 1.7, 5), color: 0xffffff, pos: [0, 0.85, 0] },
+    { geo: cyl(0.55, 0.55, 0.12, 12), color: 0xff5aa0, pos: [0, 1.95, 0], rot: [Math.PI / 2, 0, 0] },
+    { geo: cyl(0.34, 0.34, 0.14, 12), color: 0xfff27a, pos: [0, 1.95, 0], rot: [Math.PI / 2, 0, 0] },
+    { geo: cyl(0.14, 0.14, 0.16, 8), color: 0x7ae0ff, pos: [0, 1.95, 0], rot: [Math.PI / 2, 0, 0] },
+  ]);
+}
+export function candyCaneGeometry(): THREE.BufferGeometry {
+  const parts: Part[] = [];
+  for (let i = 0; i < 6; i++) parts.push({ geo: cyl(0.14, 0.14, 0.3, 8), color: i % 2 ? 0xffffff : 0xe0245a, pos: [0, 0.15 + i * 0.3, 0] });
+  parts.push({ geo: cyl(0.14, 0.14, 0.5, 8), color: 0xe0245a, pos: [0.22, 1.9, 0], rot: [0, 0, Math.PI / 2] });
+  return build(parts);
+}
+export function gumdropGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: sph(0.7), color: 0x7ae07a, pos: [0, 0.35, 0], scale: [1, 0.8, 1] },
+    { geo: sph(0.1), color: 0xffffff, pos: [-0.2, 0.7, -0.3] },
+    { geo: cyl(0.7, 0.7, 0.12, 12), color: 0xffffff, pos: [0, 0.06, 0] },
+  ]);
+}
+export function cupcakeGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: cone(0.7, 0.8), color: 0xd9a066, pos: [0, 0.4, 0], rot: [Math.PI, 0, 0] },
+    { geo: sph(0.72), color: 0xff9ccb, pos: [0, 1.0, 0], scale: [1, 0.7, 1] },
+    { geo: sph(0.5), color: 0xffffff, pos: [0, 1.4, 0], scale: [1, 0.7, 1] },
+    { geo: sph(0.14), color: 0xd01a3a, pos: [0, 1.8, 0] },
+  ]);
+}
+export function domeGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: cyl(1.8, 2.0, 0.6, 14), color: 0x8b93a6, pos: [0, 0.3, 0] },
+    { geo: new THREE.SphereGeometry(1.6, 12, 7, 0, Math.PI * 2, 0, Math.PI / 2), color: 0xbfe6f5, pos: [0, 0.6, 0] },
+    { geo: box(0.5, 0.7, 0.3), color: 0x4b5468, pos: [0, 0.65, -1.9] },
+  ]);
+}
+export function antennaGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: cyl(0.08, 0.12, 3.4, 6), color: 0xc9d0dc, pos: [0, 1.7, 0] },
+    { geo: cone(0.55, 0.3), color: 0xe8edf5, pos: [0, 3.5, 0], rot: [Math.PI * 0.8, 0, 0] },
+    { geo: sph(0.08), color: 0xff4a3a, pos: [0, 3.5, 0] },
+  ]);
+}
+export function craterRockGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: new THREE.DodecahedronGeometry(0.8, 0), color: 0x9aa0ad, pos: [0, 0.35, 0], scale: [1.3, 0.7, 1.1] },
+    { geo: new THREE.DodecahedronGeometry(0.4, 0), color: 0x777d8a, pos: [0.3, 0.6, 0.1], scale: [1.2, 0.4, 1] },
+  ]);
 }
 
 // ------------------------------------------------------------------- props

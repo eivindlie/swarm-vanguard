@@ -113,6 +113,27 @@ export function siegeParams(): Record<number, SiegeParams> {
       crates: [{ x: -4.9, y: 9.5, hp: 120, soldiers: 32 }, { x: -4.9, y: 13, hp: 170, soldiers: 0, weapon: 'rocket' }, { x: 4.9, y: 10.5, hp: 110, soldiers: 28 }],
       tiles1: 22, tiles10: 4, coins: 170,
     },
+    24: {
+      id: 206, world: 5, name: 'Neon Citadel', keystoneHp: 5000, hpMul: 3.4,
+      waves: [[5, 14, 'grunt'], [9, 6, 'bomber'], [13, 34, 'grunt'], [17, 8, 'bomber'], [21, 34, 'runner'], [26, 56, 'grunt'], [31, 6, 'bulwark'], [36, 10, 'bomber'], [42, 44, 'runner'], [47, 76, 'grunt'], [53, 12, 'bomber'], [59, 8, 'brute']],
+      escalate: { every: 3.3, count: 84, growth: 1.1, kind: 'grunt' },
+      crates: [{ x: -4.2, y: 9.5, hp: 130, soldiers: 34 }, { x: -4.2, y: 13, hp: 180, soldiers: 0, weapon: 'laser' }, { x: 4.4, y: 10.5, hp: 120, soldiers: 30 }],
+      tiles1: 22, tiles10: 4, coins: 190,
+    },
+    28: {
+      id: 207, world: 6, name: 'Gingerbread Keep', keystoneHp: 9000, hpMul: 5.2,
+      waves: [[5, 16, 'grunt'], [9, 12, 'jelly'], [13, 36, 'grunt'], [17, 16, 'jelly'], [22, 36, 'runner'], [27, 60, 'grunt'], [32, 20, 'jelly'], [37, 8, 'brute'], [43, 48, 'runner'], [48, 80, 'grunt'], [54, 26, 'jelly'], [60, 9, 'brute']],
+      escalate: { every: 3.2, count: 88, growth: 1.1, kind: 'grunt' },
+      crates: [{ x: -4.2, y: 9.5, hp: 140, soldiers: 36 }, { x: -4.2, y: 13, hp: 190, soldiers: 0, weapon: 'rocket' }, { x: 4.4, y: 10.5, hp: 130, soldiers: 32 }],
+      tiles1: 24, tiles10: 4, coins: 210,
+    },
+    32: {
+      id: 208, world: 7, name: 'Twin Moon Reactors', keystoneHp: 6400, hpMul: 5.8, twin: true,
+      waves: [[5, 18, 'grunt'], [9, 14, 'drone'], [13, 40, 'grunt'], [17, 4, 'bulwark'], [21, 20, 'drone'], [26, 64, 'grunt'], [31, 6, 'bomber'], [36, 28, 'drone'], [42, 8, 'bulwark'], [47, 84, 'grunt'], [53, 36, 'drone'], [59, 12, 'bomber']],
+      escalate: { every: 3.1, count: 92, growth: 1.1, kind: 'grunt' },
+      crates: [{ x: -4.9, y: 9.5, hp: 150, soldiers: 38 }, { x: -4.9, y: 13, hp: 200, soldiers: 0, weapon: 'laser' }, { x: 4.9, y: 10.5, hp: 140, soldiers: 34 }],
+      tiles1: 24, tiles10: 5, coins: 240,
+    },
     16: {
       id: 204, world: 3, name: 'Ember Stronghold', keystoneHp: 6800, hpMul: 3.4,
       waves: [[5, 12, 'grunt'], [8, 20, 'runner'], [12, 30, 'grunt'], [16, 6, 'splitter'], [20, 30, 'runner'], [25, 46, 'grunt'], [30, 7, 'brute'], [35, 56, 'grunt'], [41, 38, 'runner'], [47, 8, 'splitter'], [53, 66, 'grunt'], [59, 8, 'brute']],

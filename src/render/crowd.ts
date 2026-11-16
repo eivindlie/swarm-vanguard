@@ -13,10 +13,10 @@ const MAX_BULLETS = 400;
 const FLASH_TIME = 0.14;
 // Visual size only: hit boxes and formation are simulation values and stay as they are, so balance is unchanged.
 const SOLDIER_SCALE = 1.4;
-const ENEMY_SCALE: Record<EnemyKind, number> = { grunt: 1.4, runner: 1.4, mini: 1.4, splitter: 1.3, brute: 1.25, elite: 1.3, bulwark: 1.3, boss: 1.1 };
+const ENEMY_SCALE: Record<EnemyKind, number> = { grunt: 1.4, runner: 1.4, mini: 1.4, splitter: 1.3, brute: 1.25, elite: 1.3, bulwark: 1.3, bomber: 1.5, jelly: 1.4, drone: 1.3, boss: 1.1 };
 const scaleOf = (k: CorpseKind) => (k === 'soldier' ? SOLDIER_SCALE : ENEMY_SCALE[k]);
 // big units flash less so their model stays readable under heavy fire
-const FLASH_GAIN: Record<EnemyKind, number> = { grunt: 1, runner: 1, brute: 0.55, splitter: 0.7, mini: 1, elite: 0.5, bulwark: 0.7, boss: 0.4 };
+const FLASH_GAIN: Record<EnemyKind, number> = { grunt: 1, runner: 1, brute: 0.55, splitter: 0.7, mini: 1, elite: 0.5, bulwark: 0.7, bomber: 0.9, jelly: 0.8, drone: 1, boss: 0.4 };
 
 const BULLET_STYLE: Record<WeaponType, { color: number; s: [number, number, number] }> = {
   // big and bright enough to read on a phone screen (they were hairlines before)
@@ -28,7 +28,7 @@ const BULLET_STYLE: Record<WeaponType, { color: number; s: [number, number, numb
 };
 
 // how fast each kind's walk cycle runs
-const RUN_RATE: Record<EnemyKind, number> = { grunt: 1.0, runner: 1.7, brute: 0.75, splitter: 0.9, mini: 2.0, elite: 0.9, bulwark: 0.9, boss: 0.5 };
+const RUN_RATE: Record<EnemyKind, number> = { grunt: 1.0, runner: 1.7, brute: 0.75, splitter: 0.9, mini: 2.0, elite: 0.9, bulwark: 0.9, bomber: 1.5, jelly: 1.1, drone: 1.6, boss: 0.5 };
 
 type CorpseKind = EnemyKind | 'soldier';
 
@@ -54,7 +54,7 @@ interface Unit {
   max: number;
 }
 
-const SHADOW: Record<EnemyKind, number> = { grunt: 1.1, runner: 0.9, brute: 2.6, splitter: 2.0, mini: 0.8, elite: 3.2, bulwark: 1.9, boss: 5.5 };
+const SHADOW: Record<EnemyKind, number> = { grunt: 1.1, runner: 0.9, brute: 2.6, splitter: 2.0, mini: 0.8, elite: 3.2, bulwark: 1.9, bomber: 1.3, jelly: 1.5, drone: 1.1, boss: 5.5 };
 
 const hash01 = (id: number) => {
   const s = Math.sin(id * 12.9898) * 43758.5453;
@@ -97,6 +97,9 @@ export class Crowd {
     this.enemies.brute = this.unit(M.bruteGeometry(), 90, true);
     this.enemies.elite = this.unit(M.eliteGeometry(), 24, true, 0.05);
     this.enemies.bulwark = this.unit(M.bulwarkGeometry(), 260, false);
+    this.enemies.bomber = this.unit(M.bomberGeometry(), 500, false);
+    this.enemies.jelly = this.unit(M.jellyGeometry(), 500, false);
+    this.enemies.drone = this.unit(M.droneGeometry(), 500, false);
     this.enemies.splitter = this.unit(M.splitterGeometry(), 160, false);
     this.enemies.mini = this.unit(M.miniGeometry(), 700, false);
     this.far.grunt = this.unit(M.gruntFarGeometry(), FAR_MAX.grunt!, false);
@@ -116,6 +119,9 @@ export class Crowd {
     this.corpseMeshes.brute = this.unit(M.bruteGeometry(), 40, false);
     this.corpseMeshes.elite = this.unit(M.eliteGeometry(), 12, false);
     this.corpseMeshes.bulwark = this.unit(M.bulwarkGeometry(), 90, false);
+    this.corpseMeshes.bomber = this.unit(M.bomberGeometry(), 120, false);
+    this.corpseMeshes.jelly = this.unit(M.jellyGeometry(), 120, false);
+    this.corpseMeshes.drone = this.unit(M.droneGeometry(), 120, false);
     this.corpseMeshes.splitter = this.unit(M.splitterGeometry(), 60, false);
     this.corpseMeshes.mini = this.unit(M.miniGeometry(), 160, false);
     this.corpseMeshes.boss = this.unit(M.bossGeometry('golem'), 2, false);
@@ -338,7 +344,7 @@ export class Crowd {
   }
 
   private drawEnemies(game: Game, dt: number, camera: THREE.Camera) {
-    const counts: Record<EnemyKind, number> = { grunt: 0, runner: 0, brute: 0, splitter: 0, mini: 0, elite: 0, bulwark: 0, boss: 0 };
+    const counts: Record<EnemyKind, number> = { grunt: 0, runner: 0, brute: 0, splitter: 0, mini: 0, elite: 0, bulwark: 0, bomber: 0, jelly: 0, drone: 0, boss: 0 };
     const farCounts: Partial<Record<EnemyKind, number>> = { grunt: 0, runner: 0, mini: 0, splitter: 0 };
     const d = this.dummy;
     const sq = game.squad;
@@ -423,7 +429,7 @@ export class Crowd {
   }
 
   private drawCorpses(dt: number) {
-    const counts: Record<CorpseKind, number> = { soldier: 0, grunt: 0, runner: 0, brute: 0, splitter: 0, mini: 0, elite: 0, bulwark: 0, boss: 0 };
+    const counts: Record<CorpseKind, number> = { soldier: 0, grunt: 0, runner: 0, brute: 0, splitter: 0, mini: 0, elite: 0, bulwark: 0, bomber: 0, jelly: 0, drone: 0, boss: 0 };
     const d = this.dummy;
     for (let c = this.corpses.length - 1; c >= 0; c--) {
       const k = this.corpses[c];

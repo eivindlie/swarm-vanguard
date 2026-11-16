@@ -8,7 +8,7 @@ import {
   upShotgun, upRocket, upLaser, upDamage, upRate, upPierce,
 } from './builder';
 
-export const LEVEL_COUNT = 20;
+export const LEVEL_COUNT = 24;
 
 // Four worlds of four levels each (see render/themes.ts): desert, canyon, frost, volcano.
 const NAMES = [
@@ -17,6 +17,9 @@ const NAMES = [
   'Frozen Lake', 'Snow Drift', 'Ice Gate', 'Whiteout',
   'Ember Road', 'Ash Fields', 'Magma Pass', 'The Core',
   'Vine Gate', 'Ruin Run', 'Temple Steps', 'Idol Grounds',
+  'Chrome Alley', 'Circuit Run', 'Hologram Row', 'Titan Plaza',
+  'Sugar Lane', 'Gumdrop Hill', 'Frosting Falls', 'Gummy Grounds',
+  'Crater Rim', 'Dust Basin', 'Airlock Run', 'Warden Deck',
 ];
 
 type Overrides = Record<number, number>;
@@ -76,6 +79,11 @@ function generated(id: number, K: (id: number) => number, variant = (variants as
     if (id >= 6 && w % 3 === 1) b.horde(Math.max(2, Math.round(2 + lid / 3)), 'splitter', { x: hx, w: 1.5, after: 10 });
     // page 2: armoured Bulwarks (rifles and shotguns barely scratch them; rockets, lasers and blasts do the job)
     if (id >= 18 && w % 2 === 0 && w > 0) b.horde(Math.max(2, Math.round(lid / 4)), 'bulwark', { x: hx, w: 1.5, after: 12 });
+    // world 6+: bombers (walking bombs), world 7+: jelly blobs, world 8: fast drones
+    if (id >= 21 && id < 29 && w % 2 === 1) b.horde(Math.max(3, Math.round(lid / 2)), 'bomber', { x: hx, w: 1.6, after: 9 });
+    if (id >= 25 && id < 29 && w % 2 === 0) b.horde(Math.round(n * 0.3), 'jelly', { x: hx, w: 1.7, after: 7 });
+    if (id >= 29 && w % 2 === 1) b.horde(Math.round(n * 0.4), 'drone', { x: hx, w: 1.8, after: 7 });
+    if (id >= 29 && w % 3 === 2) b.horde(Math.max(2, Math.round(lid / 3)), 'bomber', { x: hx, w: 1.6, after: 9 });
     // an elite Warlord: tough, does not die on contact and grinds the squad until it is killed
     if (id >= 6 && w % 4 === 3) b.horde(id >= 12 ? 2 : 1, 'elite', { x: hx, w: 1.2, after: 12 });
     // a gate pair: one decent side, one trap. From level 3 on, many pairs offer an upgrade instead.
@@ -107,7 +115,7 @@ function generated(id: number, K: (id: number) => number, variant = (variants as
     b.swarm(80 + lid * 40, 'grunt', 22);
   }
   b.horde(Math.round(14 * scale), 'grunt', { after: 18 });
-  return b.build(id, NAMES[id - 1] ?? `Level ${id}`, Math.round(260 * lid * 1.3), 20 + id * 5, undefined, 4 + lid * 1.2);
+  return b.build(id, NAMES[id - 1] ?? `Level ${id}`, Math.round(260 * lid * 1.3), 20 + id * 5, page === 0 ? undefined : 1.4 + 0.15 * (lid - 1), 4 + lid * 1.2);
 }
 
 // --- Bonus levels: one after each world. Jackpot = giant blocks with absurd reward packs and no danger;
@@ -157,6 +165,34 @@ function blast(id: number, world: number, name: string): LevelDef {
   return b.build(id, name, 0, 70, 1.3, 0);
 }
 
+/** Gate Run: a gauntlet of gate pairs where picking right multiplies the squad into a monster horde. */
+function gateRun(id: number, world: number, name: string, K: (id: number) => number): LevelDef {
+  return new LevelBuilder(K(id))
+    .meta({ bonus: 'gates', world })
+    .gates(mul(3), mul(2), 12)
+    .block(0, 150, multi('ROCKET PACK', rocket, soldiers(60), dmgUp), { w: 6, after: 16 })
+    .gates(mul(2), add(60), 12).horde(8, 'bomber', { x: 0, w: 3, after: 10 })
+    .swarm(500, 'grunt', 22, 26)
+    .gates(div(3), mul(3), 12).swarm(800, 'grunt', 22, 26)
+    .gates(mul(2), mul(2), 12).swarm(1100, 'grunt', 20, 26)
+    .build(id, name, 0, 70, 1.6, 0);
+}
+
+/** Boss Rush: weapon crates, then waves of ever stronger Warlords, then the world's boss. */
+function bossRush(id: number, world: number, name: string): LevelDef {
+  return new LevelBuilder(1)
+    .meta({ bonus: 'bossrush', world })
+    .gates(mul(2), add(60), 12)
+    .block(0, 140, multi('RUSH PACK', laser, rocket, soldiers(80), dmgUp), { w: 6, after: 14 })
+    .horde(1, 'elite', { x: 0, w: 1, hp: 300, after: 18 })
+    .gates(mul(2), add(80), 12)
+    .horde(2, 'elite', { x: 0, w: 2, hp: 420, after: 18 })
+    .block(0, 200, multi('SECOND WIND', soldiers(120), rateUp, dmgUp), { w: 6, after: 14 })
+    .horde(3, 'elite', { x: 0, w: 2.6, hp: 520, after: 18 })
+    .gates(mul(2), mul(2), 12)
+    .build(id, name, 4200, 90, 1.5, 6);
+}
+
 function makeBonus(K: (id: number) => number): Record<number, LevelDef> {
   return {
     4: jackpot(101, 0, 'Jackpot Vault', 1),
@@ -164,6 +200,9 @@ function makeBonus(K: (id: number) => number): Record<number, LevelDef> {
     12: jackpot(103, 2, 'Treasure Glacier', 1.1),
     16: swarmBonus(104, 3, 'Inferno Swarm', [1000, 1600, 2200], K),
     20: blast(105, 4, 'Powder Temple'),
+    24: gateRun(106, 5, 'Turbo Gates', K),
+    28: jackpot(107, 6, 'Candy Vault', 1.6),
+    32: bossRush(108, 7, 'Warden Rush'),
   };
 }
 

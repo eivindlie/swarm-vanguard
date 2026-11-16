@@ -46,6 +46,9 @@ export const ENEMY_DEFS: Record<EnemyKind, EnemyDef> = {
   splitter: { hp: 14, speed: 1.5, contactDmg: 2, radius: 0.5 },
   mini: { hp: 2, speed: 3.2, contactDmg: 1, radius: 0.22 },
   bulwark: { hp: 28, speed: 1.7, contactDmg: 3, radius: 0.6, armor: 0.3 },
+  bomber: { hp: 6, speed: 3.4, contactDmg: 4, radius: 0.4 }, // a walking bomb: costs several soldiers per touch
+  jelly: { hp: 12, speed: 2.4, contactDmg: 2, radius: 0.45 },
+  drone: { hp: 5, speed: 5.2, contactDmg: 1, radius: 0.3 },
   elite: { hp: 90, speed: 2.4, contactDmg: 9, radius: 0.75, grind: true, holds: true },
   boss: { hp: 400, speed: 0.8, contactDmg: 14, radius: 1.6, grind: true },
 };

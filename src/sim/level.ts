@@ -15,7 +15,7 @@ export interface GateSide {
 // splitter: bursts into three minis when shot; mini: small fast swarm unit
 // elite: a hero that does not die on contact but grinds the squad down until it is killed (like the boss)
 // bulwark: armoured shield bearer: rifles and shotguns do little to it, rockets and lasers hurt it fully
-export type EnemyKind = 'grunt' | 'runner' | 'brute' | 'splitter' | 'mini' | 'elite' | 'bulwark' | 'boss';
+export type EnemyKind = 'grunt' | 'runner' | 'brute' | 'splitter' | 'mini' | 'elite' | 'bulwark' | 'bomber' | 'jelly' | 'drone' | 'boss';
 
 export type BlockReward =
   | { kind: 'soldiers'; n: number }
