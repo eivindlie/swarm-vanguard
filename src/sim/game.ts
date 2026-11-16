@@ -179,6 +179,11 @@ export class Game {
     return computeStat(k, this.mods);
   }
 
+  /** How far the squad centre can move sideways (shrinks as the crowd widens). */
+  maxX(): number {
+    return Math.max(2.2, LANE_HALF - this.halfWidth() * 0.7);
+  }
+
   halfWidth(): number {
     return halfWidth(this.squad.count);
   }
@@ -249,7 +254,7 @@ export class Game {
     const sq = this.squad;
 
     // --- squad lateral movement (clamped to lane) ---
-    const maxX = Math.max(2.2, LANE_HALF - this.halfWidth() * 0.7);
+    const maxX = this.maxX();
     const tx = clamp(input.targetX, -maxX, maxX);
     const dx = tx - sq.x;
     sq.x += clamp(dx, -LATERAL_SPEED * DT, LATERAL_SPEED * DT);

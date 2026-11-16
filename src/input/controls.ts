@@ -6,6 +6,8 @@ import { LANE_HALF } from '../sim/game';
  */
 export class Controls {
   targetX = 0;
+  /** Current lateral limit of the squad (set every frame from the sim). */
+  limit = LANE_HALF;
   override: number | null = null;
   private dragging = false;
   private startPx = 0;
@@ -25,7 +27,7 @@ export class Controls {
       if (!this.dragging) return;
       const w = el.clientWidth || 360;
       // dragging across the full stage width moves ~1.6 lane widths
-      this.targetX = clampX(this.startTarget + ((e.clientX - this.startPx) / w) * LANE_HALF * 2 * 1.6);
+      this.targetX = this.clamp(this.startTarget + ((e.clientX - this.startPx) / w) * LANE_HALF * 2 * 1.6);
     });
     const up = () => (this.dragging = false);
     el.addEventListener('pointerup', up);
@@ -38,7 +40,12 @@ export class Controls {
   /** Call once per frame with real dt. */
   update(dt: number) {
     const dir = (this.keys.has('arrowright') || this.keys.has('d') ? 1 : 0) - (this.keys.has('arrowleft') || this.keys.has('a') ? 1 : 0);
-    if (dir) this.targetX = clampX(this.targetX + dir * 9 * dt);
+    if (dir) this.targetX = this.clamp(this.targetX + dir * 9 * dt);
+    else this.targetX = this.clamp(this.targetX);
+  }
+
+  private clamp(x: number): number {
+    return Math.max(-this.limit, Math.min(this.limit, x));
   }
 
   value(): number {
@@ -51,6 +58,3 @@ export class Controls {
   }
 }
 
-function clampX(x: number) {
-  return Math.max(-LANE_HALF, Math.min(LANE_HALF, x));
-}

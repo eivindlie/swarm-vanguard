@@ -8,7 +8,7 @@ export class Sfx {
 
   constructor() {
     try {
-      this.muted = localStorage.getItem('squadrush.muted') === '1';
+      this.muted = (localStorage.getItem('swarmvanguard.muted') ?? localStorage.getItem('squadrush.muted')) === '1';
     } catch {
       /* storage unavailable */
     }
@@ -39,7 +39,7 @@ export class Sfx {
     this.muted = m;
     if (this.master) this.master.gain.value = m ? 0 : 0.35;
     try {
-      localStorage.setItem('squadrush.muted', m ? '1' : '0');
+      localStorage.setItem('swarmvanguard.muted', m ? '1' : '0');
     } catch {
       /* ignore */
     }

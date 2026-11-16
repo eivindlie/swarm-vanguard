@@ -200,6 +200,45 @@ export class GameRenderer {
     place(mesaGeometry(), 22, LANE_HALF + 14, LANE_HALF + 34, [1.2, 2.4]);
   }
 
+  /** Debug: number of block/counter/gate views whose position differs from the sim entity with the same id. */
+  viewMismatches(game: Game): number {
+    let bad = 0;
+    for (const b of game.blocks) {
+      const v = this.blockViews.get(b.id);
+      if (v && (Math.abs(v.group.position.x - b.x) > 1e-6 || Math.abs(v.group.position.z + b.y) > 1e-6)) bad++;
+    }
+    for (const c of game.counters) {
+      const v = this.counterViews.get(c.id);
+      if (v && (Math.abs(v.group.position.x - c.x) > 1e-6 || Math.abs(v.group.position.z + c.y) > 1e-6)) bad++;
+    }
+    for (const g of game.gates) {
+      const m = this.gateViews.get(g.id);
+      if (m && (Math.abs(m.position.x - g.x) > 1e-6 || Math.abs(m.position.z + g.y) > 1e-6)) bad++;
+    }
+    return bad;
+  }
+
+  /** Drop every per-entity view: a new Game restarts entity ids, so stale views would be reused. */
+  reset() {
+    for (const v of this.blockViews.values()) {
+      this.scene.remove(v.group);
+      v.tex.dispose();
+    }
+    this.blockViews.clear();
+    for (const v of this.counterViews.values()) {
+      this.scene.remove(v.group);
+      v.tex.dispose();
+    }
+    this.counterViews.clear();
+    for (const m of this.gateViews.values()) {
+      this.scene.remove(m);
+      m.geometry.dispose();
+      (m.material as THREE.Material).dispose();
+    }
+    this.gateViews.clear();
+    this.shake = 0;
+  }
+
   /** Turn sim events into particles/shake. Call after each sim step. */
   fxEvents(game: Game) {
     const sq = game.squad;
@@ -493,6 +532,7 @@ export class GameRenderer {
       soldiers: this.soldiers.count,
       enemies: Object.values(this.enemyMeshes).reduce((a, m) => a + m.count, 0),
       bullets: this.bullets.count,
+      views: { blocks: this.blockViews.size, gates: this.gateViews.size, counters: this.counterViews.size },
     };
   }
 }

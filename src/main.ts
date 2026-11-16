@@ -43,6 +43,7 @@ function restart(level?: number, newSeed?: number) {
   if (level !== undefined) levelIdx = Math.max(0, Math.min(LEVELS.length - 1, level - 1));
   if (newSeed !== undefined) seed = newSeed;
   game = new Game(LEVELS[levelIdx], seed, metaModifiers(save));
+  renderer.reset();
   controls.reset();
   hud.setLevel(LEVELS[levelIdx].id);
   hud.hideEnd();
@@ -136,6 +137,7 @@ function showEndScreen() {
 function frame(now: number) {
   const dt = Math.min(0.1, (now - last) / 1000);
   last = now;
+  controls.limit = game.maxX();
   controls.update(dt);
   if (!paused && game.phase === 'playing') {
     acc += dt * timeScale;

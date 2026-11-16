@@ -10,7 +10,8 @@ export interface SaveData {
   upgrades: Record<string, number>; // reserved for the future upgrade shop
 }
 
-const KEY = 'squadrush.save';
+const KEY = 'swarmvanguard.save';
+const OLD_KEY = 'squadrush.save'; // pre-rename saves are migrated on first load
 const fresh = (): SaveData => ({ version: 1, unlockedLevel: 1, coins: 0, stars: {}, upgrades: {} });
 
 function migrate(raw: any): SaveData {
@@ -26,7 +27,7 @@ function migrate(raw: any): SaveData {
 
 export function loadSave(): SaveData {
   try {
-    const txt = localStorage.getItem(KEY);
+    const txt = localStorage.getItem(KEY) ?? localStorage.getItem(OLD_KEY);
     return txt ? migrate(JSON.parse(txt)) : fresh();
   } catch {
     return fresh();

@@ -1,4 +1,4 @@
-# Squad Rush
+# Swarm Vanguard
 
 A mobile-first 3D lane shooter: your squad auto-advances and auto-fires, you steer sideways.
 Shoot blocks, pick gates, grow the squad, survive the hordes and beat the boss.

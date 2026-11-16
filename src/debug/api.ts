@@ -36,6 +36,7 @@ export function installDebugApi(h: DebugHooks) {
       g.debugSpawn('grunt', n, 12);
       g.squad.count = Math.max(g.squad.count, 100);
     },
+    viewMismatches: () => h.renderer.viewMismatches(h.getGame()),
     raw: () => h.getGame(),
   };
 }
