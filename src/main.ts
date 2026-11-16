@@ -246,7 +246,7 @@ function handleEvents() {
 let tipClock = 0;
 function maybeTip(dt: number) {
   tipClock += dt;
-  if (tipClock < 0.35 || params.has('autoplay') || paused || game.phase !== 'playing' || hud.tipVisible()) return;
+  if (tipClock < 0.35 || params.has('autoplay') || paused || game.phase !== 'playing' || hud.tipVisible() || hud.hintVisible()) return;
   tipClock = 0;
   const seen = (k: string) => settings.tipsSeen.includes(k);
   const sq = game.squad;

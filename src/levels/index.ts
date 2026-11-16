@@ -21,8 +21,10 @@ type Overrides = Record<number, number>;
 
 // --- Hand-built intro levels: teach gates, shoot-blocks, barrels, upgrade gates, counting blocks, brutes. ---
 function makeHand(K: (id: number) => number): LevelDef[] {
+  // Level 1 is the tutorial: a free gate first (like every other level), so a new player who has not yet
+  // learned to steer is not overrun before the first gate. Its difficulty is set by hand, not by the tuner.
   const l1 = new LevelBuilder(K(1))
-    .horde(10).gates(add(5), mul(2)).block(-2, 18, soldiers(12)).horde(22)
+    .gates(add(6), add(6), 14).horde(10).gates(add(5), mul(2)).block(-2, 18, soldiers(12)).horde(22)
     .gates(sub(4), add(8)).horde(36).block(2, 30, dmgUp).counter(-2.2, 4, 1, 40, 14).horde(50, 'grunt', { after: 22 })
     .build(1, NAMES[0], 150, 20, undefined, 4);
 

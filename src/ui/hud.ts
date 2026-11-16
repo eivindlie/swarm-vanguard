@@ -61,6 +61,9 @@ export class Hud {
     return $('tip').classList.contains('show');
   }
 
+  hintVisible(): boolean {
+    return $('hint').classList.contains('show');
+  }
   showHint() { $('hint').classList.add('show'); }
   hideHint() { $('hint').classList.remove('show'); }
 

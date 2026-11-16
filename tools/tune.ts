@@ -13,7 +13,8 @@ const GRID = Array.from({ length: 26 }, (_, i) => Math.round(0.2 * Math.pow(1.17
 const names = ['balanced', 'naive', 'pure-fight', 'greedy-expand'] as const;
 // optional 2nd argument: only re-tune these ids (comma separated); the rest of tuned.json is kept
 const only = process.argv[3]?.split(',').map(Number);
-const IDS = only ?? Array.from({ length: LEVEL_COUNT }, (_, i) => i + 1);
+// level 1 is the hand-tuned tutorial: it is only re-tuned if asked for explicitly
+const IDS = only ?? Array.from({ length: LEVEL_COUNT - 1 }, (_, i) => i + 2);
 
 function rates(id: number, k: number): Record<string, number> {
   const level = makeLevels({ [id]: k }).find((l) => l.id === id)!;
@@ -28,7 +29,7 @@ function rates(id: number, k: number): Record<string, number> {
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const tunedFile = new URL('../src/levels/tuned.json', import.meta.url);
-const out: Record<string, number> = only ? JSON.parse(readFileSync(tunedFile, 'utf8')) : {};
+const out: Record<string, number> = JSON.parse(readFileSync(tunedFile, 'utf8')); // keeps level 1's hand-set value
 
 for (const id of IDS) {
   const table = GRID.map((k) => ({ k, r: rates(id, k) }));

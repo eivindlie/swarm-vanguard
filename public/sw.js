@@ -2,9 +2,13 @@
 // __BUILD_ID__ is replaced at build time (vite.config.ts) so every deploy gets a fresh cache and old ones are removed.
 const CACHE = 'swarm-vanguard-__BUILD_ID__';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
+// __ASSET_LIST__ is replaced at build time with every file in dist/assets, so install precaches the WHOLE build:
+// the very first launch and every update work offline immediately (not only after a second visit).
+const ASSET_LIST = '__ASSET_LIST__';
+const ASSETS = ASSET_LIST.startsWith('__') ? [] : JSON.parse(ASSET_LIST);
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll([...SHELL, ...ASSETS])).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (e) => {
@@ -27,8 +31,10 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put('./index.html', copy));
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put('./index.html', copy));
+          }
           return res;
         })
         .catch(() => caches.match('./index.html')),
