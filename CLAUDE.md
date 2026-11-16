@@ -55,7 +55,7 @@ after each commit** (the user has said this is fine). Pushing to `main` deploys 
 ## Rules learned the hard way
 - **Render-only changes must leave `npm run balance` output identical.** Sim changes go in one batch, then one retune.
 - Any new sim mechanic must be playable by `balanced` bot without a new skill, and `k` (horde multiplier in
-  `LevelBuilder`) must scale it, otherwise the tuner collapses to the grid floor. The tuner and bots use **zero** shop upgrades.
+  `LevelBuilder`) must scale it, otherwise the tuner collapses to the grid floor. The tuner and bots play with the **upgrade profile** (`profileLevels/profileModifiers(progress)` in `meta/upgrades.ts`: the upgrades a typical player owns that far into the game, growing from 0 at level 1 to ~15/20 size+damage, 10/15 rate, piercing and Armory later). `NO_PROFILE=1` runs without. Changing the shop or profile means a full retune (`npx tsx tools/tune.ts 0.8`, >1 h; it only writes `tuned.json` at the very end, and high k at the last levels is slow).
 - Levels are addressed by **id** (jackpot/swarm/blast bonus levels 101-105, sieges 201-205); `levelIdx`/array position is play order. Tools must use
   `LEVELS.find(l => l.id === id)`, never `LEVELS[id - 1]`.
 - Bullets must spawn in front of a block ahead, or deep crowds shoot over it (regression test exists).
@@ -78,4 +78,7 @@ after each commit** (the user has said this is fine). Pushing to `main` deploys 
 - Page 2 ids restart the difficulty scale (`lid` in `generated`); page-1 rows of `npm run balance` must stay identical (compare ids 1-16).
 - World 5 Jungle Ruins (17-20): `bulwark` enemy (`armor` 0.3 vs rifle/shotgun bullets; rockets, lasers and blasts ignore armor), Stone Idol boss,
   Blast bonus 105 (barrel chain reactions: barrels caught in a barrel blast go off; rocket splash does not chain, so page 1 is unchanged).
-- Plan for worlds 6-8: Neon City (bombers, 3-way gates, arc weapon), Candy Kingdom (healer totems, temporary buffs), Moon Base (boss rush).
+- World 6 Neon City (21-24: `bomber`, Turbo Gates bonus 106, siege 206), world 7 Candy Kingdom (25-28: `jelly`, temporary buff gates OVERDRIVE/HEAVY ROUNDS via `Upgrade.secs` + `Modifier.until`, Candy Vault jackpot 107, siege 207), world 8 Moon Base (29-32: `drone`, Warden Rush boss-rush bonus 108, twin siege 208).
+- Page-2 levels use level-relative enemy HP (`hpMul` from `lid`), otherwise the tuner shrinks hordes to nothing.
+- Shop (`meta/upgrades.ts`): size 20, damage 20, rate 15, loot 10, Piercing 3, Armory 3 (start with shotgun/rocket/laser). Levels past the old cap cost steeply more (`tail`).
+- Sieges are scaled by world (`grow` in `siege()`); with the profile, naive and park must lose, balanced win.

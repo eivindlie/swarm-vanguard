@@ -3,7 +3,7 @@ export type WeaponType = 'rifle' | 'shotgun' | 'rocket' | 'laser';
 /** What an upgrade gate gives instead of changing the head count. */
 export type Upgrade =
   | { kind: 'weaponType'; weapon: WeaponType }
-  | { kind: 'stat'; stat: 'damage' | 'fireInterval' | 'pierce' | 'spread'; add?: number; mul?: number };
+  | { kind: 'stat'; stat: 'damage' | 'fireInterval' | 'pierce' | 'spread'; add?: number; mul?: number; secs?: number };
 
 export type GateOp = 'add' | 'mul' | 'sub' | 'div' | 'upgrade';
 export interface GateSide {

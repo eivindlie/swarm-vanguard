@@ -169,7 +169,8 @@ export function gateLabel(s: GateSide): string {
 
 /** Rough worth of a gate in soldiers: lets bots (and hints) compare count gates with upgrade gates. */
 export function gateScore(count: number, s: GateSide): number {
-  return s.op === 'upgrade' ? count + count * 0.3 + 6 : applyGate(count, s);
+  if (s.op === 'upgrade') return s.upgrade && s.upgrade.kind === 'stat' && s.upgrade.secs ? count + count * 0.12 + 3 : count + count * 0.3 + 6;
+  return applyGate(count, s);
 }
 
 export function applyGate(count: number, s: GateSide): number {
@@ -221,6 +222,7 @@ export class Game {
     this.waves = level.spawns.filter((s): s is Extract<LevelDef['spawns'][number], { t: 'wave' }> => s.t === 'wave').sort((a, b) => a.at - b.at);
     this.pendingSpawns = level.spawns.filter((s) => s.t !== 'wave').sort((a, b) => spawnY(a) - spawnY(b));
     const start = Math.round(computeStat('startSize', this.mods));
+    this.weapon = (['rifle', 'shotgun', 'rocket', 'laser'] as const)[Math.max(0, Math.min(3, Math.round(computeStat('startWeapon', this.mods))))];
     this.squad.count = start;
     this.squad.startCount = start;
     this.squad.maxCount = start;
@@ -355,6 +357,7 @@ export class Game {
     if (this.phase !== 'playing') return;
     this.events.length = 0;
     this.tick++;
+    if (this.mods.some((m) => m.until !== undefined && m.until <= this.tick)) this.mods = this.mods.filter((m) => m.until === undefined || m.until > this.tick);
     const sq = this.squad;
 
     // --- squad lateral movement (clamped to the lane / arena) ---
@@ -761,7 +764,7 @@ export class Game {
       this.weapon = u.weapon;
       this.events.push({ t: 'weapon', weapon: u.weapon });
     } else {
-      this.mods.push({ stat: u.stat, add: u.add, mul: u.mul, source: 'gate' });
+      this.mods.push({ stat: u.stat, add: u.add, mul: u.mul, source: 'gate', until: u.secs ? this.tick + Math.round(u.secs * 60) : undefined });
     }
   }
 

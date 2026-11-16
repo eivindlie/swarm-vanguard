@@ -2,6 +2,7 @@
 import { makeLevels } from '../src/levels';
 import { Game } from '../src/sim/game';
 import { policies, toInput } from '../src/sim/bots';
+import { profileFor } from './bot';
 
 const id = Number(process.argv[2] ?? 201);
 const seeds = Number(process.argv[3] ?? 12);
@@ -10,7 +11,7 @@ console.log(`${level.name}: keystone hp ${level.spawns.find((s) => s.t === 'bloc
 for (const name of ['naive', 'park', 'pure-fight', 'greedy-expand', 'balanced']) {
   let won = 0, sumT = 0, sumRem = 0, maxT = 0, unfinished = 0, leaks = 0;
   for (let s = 1; s <= seeds; s++) {
-    const g = new Game(level, s);
+    const g = new Game(level, s, profileFor(level));
     while (g.phase === 'playing' && g.tick < 30000) {
       g.step(toInput(policies[name](g)));
       leaks += g.events.filter((e) => e.t === 'leak').length;

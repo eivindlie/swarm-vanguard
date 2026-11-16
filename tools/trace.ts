@@ -1,7 +1,7 @@
 // Usage: npx tsx tools/trace.ts <level> <seed> [k]  -> squad size over time for each policy + where it died
 import { makeLevels } from '../src/levels';
 import { Game } from '../src/sim/game';
-import { policies } from './bot';
+import { policies, profileFor } from './bot';
 import { toInput } from '../src/sim/bots';
 
 const id = Number(process.argv[2] ?? 4);
@@ -10,7 +10,7 @@ const k = process.argv[4] ? Number(process.argv[4]) : undefined;
 const level = makeLevels(k ? { [id]: k } : {}).find((l) => l.id === id)!;
 console.log(`level ${id} length=${level.length.toFixed(0)} hpMul=${level.hpMul?.toFixed(2)} spawns=${level.spawns.length}`);
 for (const name of Object.keys(policies)) {
-  const g = new Game(level, seed);
+  const g = new Game(level, seed, profileFor(level));
   const samples: string[] = [];
   let boss = '';
   while (g.phase === 'playing' && g.tick < 20000) {

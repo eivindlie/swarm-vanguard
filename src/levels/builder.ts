@@ -75,6 +75,9 @@ export const upShotgun = upWeapon('shotgun', 'SHOTGUN');
 export const upRocket = upWeapon('rocket', 'ROCKETS');
 export const upLaser = upWeapon('laser', 'LASER');
 export const upDamage: GateSide = { op: 'upgrade', value: 0, upgrade: { kind: 'stat', stat: 'damage', mul: 1.4 }, label: 'DMG +40%' };
+/** Temporary buffs (page 2): they run out after a few seconds, so they are worth less than permanent upgrade gates. */
+export const upOverdrive: GateSide = { op: 'upgrade', value: 0, upgrade: { kind: 'stat', stat: 'fireInterval', mul: 0.5, secs: 14 }, label: 'OVERDRIVE 14s' };
+export const upHeavy: GateSide = { op: 'upgrade', value: 0, upgrade: { kind: 'stat', stat: 'damage', mul: 2, secs: 14 }, label: 'HEAVY ROUNDS 14s' };
 export const upRate: GateSide = { op: 'upgrade', value: 0, upgrade: { kind: 'stat', stat: 'fireInterval', mul: 0.8 }, label: 'FAST +25%' };
 export const upPierce: GateSide = { op: 'upgrade', value: 0, upgrade: { kind: 'stat', stat: 'pierce', add: 1 }, label: 'PIERCE' };
 export const multi = (label: string, ...rewards: BlockReward[]): BlockReward => ({ kind: 'multi', label, rewards });

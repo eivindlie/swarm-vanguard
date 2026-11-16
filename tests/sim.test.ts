@@ -289,9 +289,10 @@ describe('bonus levels and jackpot rewards', () => {
       expect(LEVELS[j].id % 4, `${l.name} follows level ${LEVELS[j].id}`).toBe(0);
     }
   });
-  it('bonus levels have no boss and bots clear them', () => {
+  it('bonus levels (except Boss Rush) have no boss and bots clear them', () => {
     for (const l of LEVELS.filter((x) => x.bonus && x.bonus !== 'siege')) {
-      expect(l.spawns.some((s) => s.t === 'enemies' && s.kind === 'boss')).toBe(false);
+      // a Boss Rush ends with the world's boss on purpose; every other bonus level has none
+      if (l.bonus !== 'bossrush') expect(l.spawns.some((s) => s.t === 'enemies' && s.kind === 'boss')).toBe(false);
       const g = new Game(l, 1);
       while (g.phase === 'playing' && g.tick < 20000) g.step({ targetX: 0 });
       expect(g.phase, l.name).toBe('won');
@@ -555,5 +556,43 @@ describe('twin keystones', () => {
     expect(g.phase).toBe('playing'); // the right pillar still stands
     expect(g.keystoneInfo()!.hp).toBeGreaterThan(0);
     expect(g.keystone!.x).toBeGreaterThan(0);
+  });
+});
+
+import { UPGRADES, levelOf, modifiersFromSave, profileLevels, buy } from '../src/meta/upgrades';
+describe('shop and upgrade profile', () => {
+  it('the Armory upgrade starts every level with a better weapon', () => {
+    const save = { version: 2 as const, coins: 0, stars: {}, upgrades: { armory: 2 } };
+    expect(new Game(tiny([]), 1, modifiersFromSave(save)).weapon).toBe('rocket');
+    expect(new Game(tiny([]), 1).weapon).toBe('rifle');
+  });
+  it('a temporary gate buff expires', () => {
+    const g = new Game(
+      tiny([{ t: 'gates', y: 10, left: { op: 'upgrade', value: 0, upgrade: { kind: 'stat', stat: 'damage', mul: 3, secs: 2 }, label: 'HEAVY' }, right: { op: 'add', value: 5 } }]),
+      1,
+    );
+    const base = g.stat('damage');
+    for (let i = 0; i < 300 && g.stat('damage') === base; i++) g.step({ targetX: -2 });
+    expect(g.stat('damage')).toBeCloseTo(base * 3, 5);
+    for (let i = 0; i < 150; i++) g.step({ targetX: -2 });
+    expect(g.stat('damage')).toBeCloseTo(base, 5);
+  });
+  it('the assumed upgrade profile grows with progress and stays within the shop limits', () => {
+    let prev = 0;
+    for (let p = 1; p <= 32; p++) {
+      const lv = profileLevels(p);
+      const total = Object.values(lv).reduce((a, b) => a + (b ?? 0), 0);
+      expect(total).toBeGreaterThanOrEqual(prev);
+      prev = total;
+      for (const u of UPGRADES) expect(lv[u.id] ?? 0).toBeLessThanOrEqual(u.max);
+    }
+    expect(profileLevels(1).size).toBe(0);
+  });
+  it('late upgrade levels cost much more than early ones, and buying respects the cap', () => {
+    const size = UPGRADES.find((u) => u.id === 'size')!;
+    expect(size.cost(15)).toBeGreaterThan(size.cost(9) * 3);
+    const s = { version: 2 as const, coins: 1e9, stars: {}, upgrades: { armory: 3 } };
+    expect(buy(s, 'armory')).toBe(false);
+    expect(levelOf(s, 'armory')).toBe(3);
   });
 });

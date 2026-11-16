@@ -5,10 +5,10 @@ import { siege, siegeParams } from './siege';
 import variants from './variants.json';
 import {
   LevelBuilder, add, mul, sub, div, soldiers, multi, dmgUp, rateUp, pierceUp, spreadUp, shotgun, rocket, laser,
-  upShotgun, upRocket, upLaser, upDamage, upRate, upPierce,
+  upShotgun, upRocket, upLaser, upDamage, upRate, upPierce, upOverdrive, upHeavy,
 } from './builder';
 
-export const LEVEL_COUNT = 24;
+export const LEVEL_COUNT = 32;
 
 // Four worlds of four levels each (see render/themes.ts): desert, canyon, frost, volcano.
 const NAMES = [
@@ -62,7 +62,8 @@ function generated(id: number, K: (id: number) => number, variant = (variants as
   const waves = 4 + Math.floor(lid / 4);
   const scale = Math.pow(1.13, lid);
   const weapons = [dmgUp, rateUp, pierceUp, spreadUp, shotgun, rocket, laser];
-  const upgrades = [upLaser, upRocket, upShotgun, upDamage, upRate, upPierce];
+  // world 7+ also offers temporary buffs in the upgrade-gate pool
+  const upgrades = id >= 25 ? [upLaser, upRocket, upShotgun, upDamage, upRate, upPierce, upOverdrive, upHeavy] : [upLaser, upRocket, upShotgun, upDamage, upRate, upPierce];
   // a free opening gate: the squad gets its first growth before the first horde arrives
   b.gates(add(4 + lid), add(4 + lid), 12);
   for (let w = 0; w < waves; w++) {

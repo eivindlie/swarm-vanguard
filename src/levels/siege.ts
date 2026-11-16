@@ -23,6 +23,9 @@ export interface SiegeParams {
 }
 
 export function siege(p: SiegeParams, k = 1): LevelDef {
+  // The bots (and the tuner) play sieges with the upgrades a typical player owns by then, so deeper sieges are sized up
+  const grow = 1.3 + 0.12 * p.world;
+  p = { ...p, keystoneHp: Math.round(p.keystoneHp * grow), hpMul: p.hpMul * (1.1 + 0.05 * p.world) };
   const arena: ArenaDef = {
     half: 5.5,
     depth: 24,
@@ -107,14 +110,14 @@ export function siegeParams(): Record<number, SiegeParams> {
       tiles1: 20, tiles10: 4, coins: 130,
     },
     20: {
-      id: 205, world: 4, name: 'Twin Idol Temple', keystoneHp: 5000, hpMul: 4.0, twin: true,
+      id: 205, world: 4, name: 'Twin Idol Temple', keystoneHp: 8200, hpMul: 4.2, twin: true,
       waves: [[5, 14, 'grunt'], [9, 22, 'runner'], [13, 32, 'grunt'], [17, 3, 'bulwark'], [21, 32, 'runner'], [26, 50, 'grunt'], [31, 4, 'bulwark'], [36, 60, 'grunt'], [42, 40, 'runner'], [47, 5, 'bulwark'], [53, 70, 'grunt'], [59, 8, 'brute']],
       escalate: { every: 3.4, count: 80, growth: 1.1, kind: 'grunt' },
       crates: [{ x: -4.9, y: 9.5, hp: 120, soldiers: 32 }, { x: -4.9, y: 13, hp: 170, soldiers: 0, weapon: 'rocket' }, { x: 4.9, y: 10.5, hp: 110, soldiers: 28 }],
       tiles1: 22, tiles10: 4, coins: 170,
     },
     24: {
-      id: 206, world: 5, name: 'Neon Citadel', keystoneHp: 5000, hpMul: 3.4,
+      id: 206, world: 5, name: 'Neon Citadel', keystoneHp: 8600, hpMul: 3.8,
       waves: [[5, 14, 'grunt'], [9, 6, 'bomber'], [13, 34, 'grunt'], [17, 8, 'bomber'], [21, 34, 'runner'], [26, 56, 'grunt'], [31, 6, 'bulwark'], [36, 10, 'bomber'], [42, 44, 'runner'], [47, 76, 'grunt'], [53, 12, 'bomber'], [59, 8, 'brute']],
       escalate: { every: 3.3, count: 84, growth: 1.1, kind: 'grunt' },
       crates: [{ x: -4.2, y: 9.5, hp: 130, soldiers: 34 }, { x: -4.2, y: 13, hp: 180, soldiers: 0, weapon: 'laser' }, { x: 4.4, y: 10.5, hp: 120, soldiers: 30 }],
@@ -128,7 +131,7 @@ export function siegeParams(): Record<number, SiegeParams> {
       tiles1: 24, tiles10: 4, coins: 210,
     },
     32: {
-      id: 208, world: 7, name: 'Twin Moon Reactors', keystoneHp: 6400, hpMul: 5.8, twin: true,
+      id: 208, world: 7, name: 'Twin Moon Reactors', keystoneHp: 11000, hpMul: 6.4, twin: true,
       waves: [[5, 18, 'grunt'], [9, 14, 'drone'], [13, 40, 'grunt'], [17, 4, 'bulwark'], [21, 20, 'drone'], [26, 64, 'grunt'], [31, 6, 'bomber'], [36, 28, 'drone'], [42, 8, 'bulwark'], [47, 84, 'grunt'], [53, 36, 'drone'], [59, 12, 'bomber']],
       escalate: { every: 3.1, count: 92, growth: 1.1, kind: 'grunt' },
       crates: [{ x: -4.9, y: 9.5, hp: 150, soldiers: 38 }, { x: -4.9, y: 13, hp: 200, soldiers: 0, weapon: 'laser' }, { x: 4.9, y: 10.5, hp: 140, soldiers: 34 }],
