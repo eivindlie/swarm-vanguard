@@ -28,6 +28,15 @@
     .overlay.show { display: flex; }
     .overlay h1 { margin: 0; font-size: 40px; text-shadow: 0 4px 0 #0008; }
     .overlay p { margin: 0; opacity: 0.85; }
+    #coins { font-weight: 800; color: #ffe27a; }
+    #levels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: 100%; max-width: 330px; }
+    .lv { border: 0; border-radius: 12px; padding: 8px 0 6px; font-weight: 900; font-size: 18px; color: #fff; background: #3558c8; box-shadow: 0 3px 0 #1d3380; }
+    .lv small { display: block; font-size: 11px; letter-spacing: 1px; color: #ffe27a; min-height: 14px; }
+    .lv.sel { background: #ffb21f; color: #1b1b2f; box-shadow: 0 3px 0 #a86a00; }
+    .lv.sel small { color: #7a4a00; }
+    .lv:disabled { background: #444a5c; box-shadow: 0 3px 0 #2a2e3b; color: #9aa; }
+    #stars { font-size: 38px; letter-spacing: 6px; color: #ffd23a; text-shadow: 0 3px 0 #0008; min-height: 46px; }
+    .btn.ghost { background: #ffffff22; color: #fff; box-shadow: none; font-size: 16px; padding: 10px 24px; }
     .btn { border: 0; border-radius: 14px; padding: 14px 34px; font-size: 20px; font-weight: 800; color: #1b1b2f; background: linear-gradient(#ffe27a,#ffb21f); box-shadow: 0 4px 0 #a86a00; }
   </style>
 </head>
@@ -38,8 +47,8 @@
       <div id="boss"><span>BOSS</span><div class="bb"><i></i></div><b id="bossHp"></b></div>
       <div id="count">0</div>
     </div>
-    <div class="overlay show" id="start"><h1>SQUAD RUSH</h1><p>Drag to steer. Shoot blocks, pick gates, grow your squad.</p><button class="btn" id="startBtn">Tap to start</button></div>
-    <div class="overlay" id="end"><h1 id="endTitle"></h1><p id="endText"></p><button class="btn" id="endBtn">Retry</button></div>
+    <div class="overlay show" id="start"><h1>SQUAD RUSH</h1><p>Drag to steer. Shoot blocks, pick gates, grow your squad.</p><div id="coins"></div><div id="levels"></div><button class="btn" id="startBtn">Tap to start</button></div>
+    <div class="overlay" id="end"><h1 id="endTitle"></h1><div id="stars"></div><p id="endText"></p><button class="btn" id="endBtn">Retry</button><button class="btn ghost" id="menuBtn">Level select</button></div>
   </div>
   <script type="module" src="/src/main.ts"></script>
 </body>

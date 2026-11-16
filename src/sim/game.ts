@@ -9,6 +9,7 @@ export const LATERAL_SPEED = 9;
 export const ACTIVATE_DIST = 32; // enemies wake up when this close
 export const MAX_SHOTS = 16;
 export const BULLET_RANGE = 22;
+export const MAX_SQUAD = 300; // hard cap: keeps rendering/balance sane
 
 export interface EnemyDef {
   hp: number;
@@ -17,8 +18,8 @@ export interface EnemyDef {
   radius: number;
 }
 export const ENEMY_DEFS: Record<EnemyKind, EnemyDef> = {
-  grunt: { hp: 2, speed: 2, contactDmg: 1, radius: 0.3 },
-  runner: { hp: 1.5, speed: 4.5, contactDmg: 1, radius: 0.28 },
+  grunt: { hp: 3, speed: 2, contactDmg: 1, radius: 0.3 },
+  runner: { hp: 2, speed: 4.5, contactDmg: 1, radius: 0.28 },
   brute: { hp: 24, speed: 1.4, contactDmg: 6, radius: 0.65 },
   boss: { hp: 400, speed: 0.8, contactDmg: 14, radius: 1.6 }, // contactDmg = soldiers lost per second while touching
 };
@@ -174,8 +175,8 @@ export class Game {
           kind: s.kind,
           x: clamp(s.x + this.rng.range(-s.spreadX, s.spreadX), -LANE_HALF + 0.3, LANE_HALF - 0.3),
           y: s.y + this.rng.range(0, s.spreadY),
-          hp: s.hp ?? def.hp,
-          maxHp: s.hp ?? def.hp,
+          hp: s.hp ?? def.hp * (this.level.hpMul ?? 1),
+          maxHp: s.hp ?? def.hp * (this.level.hpMul ?? 1),
           awake: false,
           wobble: this.rng.range(0, 6.28),
         });
@@ -371,7 +372,7 @@ export class Game {
   private breakBlock(bl: Block): void {
     const r = bl.reward;
     if (r.kind === 'soldiers') {
-      this.squad.count += r.n;
+      this.squad.count = Math.min(MAX_SQUAD, this.squad.count + r.n);
       this.squad.maxCount = Math.max(this.squad.maxCount, this.squad.count);
       this.events.push({ t: 'blockBreak', x: bl.x, y: bl.y, label: `+${r.n}` });
     } else {
@@ -418,7 +419,7 @@ export class Game {
       if (!inside) continue;
       for (const o of this.gates) if (o.pair === g.pair) o.used = true;
       const before = sq.count;
-      sq.count = applyGate(sq.count, g.side);
+      sq.count = Math.min(MAX_SQUAD, applyGate(sq.count, g.side));
       sq.maxCount = Math.max(sq.maxCount, sq.count);
       this.events.push({ t: 'gate', x: g.x, y: g.y, delta: sq.count - before, label: gateLabel(g.side) });
     }
@@ -431,7 +432,7 @@ export class Game {
       if (c.value <= 0 || sq.y < c.y) continue;
       if (Math.abs(sq.x - c.x) <= c.w / 2 + rr) {
         const gain = Math.floor(c.value);
-        sq.count += gain;
+        sq.count = Math.min(MAX_SQUAD, sq.count + gain);
         sq.maxCount = Math.max(sq.maxCount, sq.count);
         c.value = 0;
         this.events.push({ t: 'gate', x: c.x, y: c.y, delta: gain, label: `+${gain}` });

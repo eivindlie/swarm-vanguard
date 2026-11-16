@@ -11,7 +11,7 @@ export interface Modifier {
 
 export const BASE_STATS: Record<StatKey, number> = {
   damage: 1,
-  fireInterval: 0.25,
+  fireInterval: 0.5,
   startSize: 5,
   bulletSpeed: 22,
   pierce: 1,

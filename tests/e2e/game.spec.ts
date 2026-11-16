@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 test('loads, starts and the squad advances', async ({ page }) => {
   await page.goto('/?level=1&seed=1');
   await page.waitForFunction(() => (window as any).__game);
-  await page.getByRole('button', { name: 'Tap to start' }).click();
+  await page.getByRole('button', { name: /Play level/ }).click();
   await page.waitForTimeout(600);
   const s = await page.evaluate(() => (window as any).__game.getState());
   expect(s.squad.y).toBeGreaterThan(0);

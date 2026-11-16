@@ -6,6 +6,7 @@ export interface DebugHooks {
   getGame(): Game;
   renderer: GameRenderer;
   controls: Controls;
+  getInput(): number;
   restart(level?: number, seed?: number): void;
   setPaused(p: boolean): void;
   start(): void;
@@ -20,7 +21,7 @@ export function installDebugApi(h: DebugHooks) {
     step: (n = 1) => {
       const g = h.getGame();
       for (let i = 0; i < n; i++) {
-        g.step({ targetX: h.controls.value() });
+        g.step({ targetX: h.getInput() });
         h.renderer.fxEvents(g);
       }
       h.renderer.render(g, 1 / 60);

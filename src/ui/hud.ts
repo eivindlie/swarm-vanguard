@@ -16,6 +16,28 @@ export class Hud {
   readonly startBtn = $<HTMLButtonElement>('startBtn');
   readonly endBtn = $<HTMLButtonElement>('endBtn');
   readonly mute = $<HTMLButtonElement>('mute');
+  readonly menuBtn = $<HTMLButtonElement>('menuBtn');
+
+  setCoins(n: number) {
+    $('coins').textContent = `Coins: ${n}`;
+  }
+
+  renderLevels(total: number, unlocked: number, stars: Record<string, number>, selected: number, onPick: (id: number) => void) {
+    const host = $('levels');
+    host.textContent = '';
+    for (let id = 1; id <= total; id++) {
+      const b = document.createElement('button');
+      b.className = 'lv' + (id === selected ? ' sel' : '');
+      b.disabled = id > unlocked;
+      const st = stars[id] ?? 0;
+      b.innerHTML = `${id}<small>${'★'.repeat(st)}${'☆'.repeat(st ? 3 - st : 0)}</small>`;
+      b.addEventListener('click', () => onPick(id));
+      host.appendChild(b);
+    }
+    this.startBtn.textContent = `Play level ${selected}`;
+  }
+
+  showStart() { this.start.classList.add('show'); }
 
   setLevel(id: number) {
     this.lvl.textContent = `LEVEL ${id}`;
@@ -45,8 +67,9 @@ export class Hud {
     setTimeout(() => el.remove(), 950);
   }
 
-  showEnd(won: boolean, text: string, btn: string) {
+  showEnd(won: boolean, text: string, btn: string, stars = 0) {
     ($('endTitle')).textContent = won ? 'VICTORY!' : 'DEFEAT';
+    $('stars').textContent = won ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '';
     ($('endText')).textContent = text;
     this.endBtn.textContent = btn;
     this.end.classList.add('show');

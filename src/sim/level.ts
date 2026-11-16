@@ -22,4 +22,5 @@ export interface LevelDef {
   length: number; // distance along lane to the finish line
   spawns: Spawn[];
   coins: number; // reward for clearing (meta-ready)
+  hpMul?: number; // enemy HP multiplier for this level (grunts/runners/brutes)
 }
