@@ -3,13 +3,13 @@
 // i.e. the hardest level a balanced player still clears, preferring ones where strategy matters.
 // Writes src/levels/tuned.json (read by src/levels/index.ts).
 import { writeFileSync } from 'node:fs';
-import { makeLevels } from '../src/levels';
+import { LEVEL_COUNT, makeLevels } from '../src/levels';
 import { policies, runBot } from './bot';
 
 const MIN_BAL = Number(process.argv[2] ?? 0.8);
 const SEEDS = 24;
 const SAFETY = 0.8;
-const GRID = Array.from({ length: 22 }, (_, i) => Math.round(0.2 * Math.pow(1.17, i) * 100) / 100); // 0.2 .. ~5.7
+const GRID = Array.from({ length: 26 }, (_, i) => Math.round(0.2 * Math.pow(1.17, i) * 100) / 100); // 0.2 .. ~10
 const names = ['balanced', 'naive', 'pure-fight', 'greedy-expand'] as const;
 
 function rates(id: number, k: number): Record<string, number> {
@@ -24,7 +24,7 @@ function rates(id: number, k: number): Record<string, number> {
 }
 
 const out: Record<string, number> = {};
-for (let id = 1; id <= 10; id++) {
+for (let id = 1; id <= LEVEL_COUNT; id++) {
   let best = { k: 1, score: -9, bal: 0, other: 0 };
   for (const k of GRID) {
     const r = rates(id, k);

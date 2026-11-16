@@ -98,12 +98,19 @@ export class GameRenderer {
           break;
         case 'kill':
           this.crowd.enemyDied(e.kind, e.x, e.y);
-          this.fx.burst(e.x, e.y, 0.4, e.kind === 'boss' ? 60 : e.kind === 'brute' ? 16 : 5, e.kind === 'boss' ? 0xffd27a : 0xe05a3a, e.kind === 'boss' ? 7 : 2.4, e.kind === 'boss' ? 0.3 : 0.14, 0.55, 3);
+          this.fx.burst(e.x, e.y, 0.4, e.kind === 'boss' ? 60 : e.kind === 'brute' || e.kind === 'splitter' ? 16 : 5, e.kind === 'boss' ? 0xffd27a : e.kind === 'splitter' || e.kind === 'mini' ? 0x6fe06f : 0xe05a3a, e.kind === 'boss' ? 7 : 2.4, e.kind === 'boss' ? 0.3 : 0.14, 0.55, 3);
           if (e.kind === 'boss') this.addShake(0.7);
           else if (e.kind === 'brute') this.addShake(0.12);
           break;
         case 'blockHit':
           this.fx.burst(e.x, e.y, 0.9, 2, 0xcfd6dd, 2, 0.1, 0.35, 2);
+          break;
+        case 'barrelHit':
+          this.fx.burst(e.x, e.y, 0.8, 3, 0xff9a3a, 2.2, 0.1, 0.35, 2.5);
+          break;
+        case 'bossAdds':
+          this.fx.burst(e.x, e.y, 1.2, 40, 0xff5a5a, 6, 0.2, 0.9, 5);
+          this.addShake(0.35);
           break;
         case 'counterHit':
           this.fx.burst(e.x, e.y, 0.9, 2, 0xffd23a, 2, 0.09, 0.35, 2);

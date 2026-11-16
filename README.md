@@ -19,12 +19,18 @@ Controls: drag (touch/mouse) or ←/→ / A/D.
 
 Rules worth knowing: enemies walk straight down the lane (no homing). Any enemy that reaches the squad,
 or slips past it to the bottom of the screen, costs lives. Volleys span the squad's full width, so
-nothing in front of you is missed. Weapon pickups (blocks): SHOTGUN (close, wide), ROCKETS (splash,
-best vs wide hordes), LASER (piercing, best vs columns/tanks), plus stat upgrades (DMG, FAST, PIERCE, SPREAD).
-`npx tsx tools/weapons.ts` compares the weapon types in a fixed arena.
+nothing in front of you is missed.
 
-Debug URL params: `?level=3&seed=42&speed=4&autostart=1`. `window.__game` exposes
-`getState()`, `step(n)`, `setInput(x)`, `stats()`, `restart()`, `stress(n)`.
+Pickups: shoot-blocks (+soldiers or weapon), counting blocks (shoot them to raise the value), math gates
+(+N, xN, -N, /N) and purple **upgrade gates** (weapon or stat). Weapons: SHOTGUN (close, wide), ROCKETS
+(splash, best vs wide hordes), LASER (piercing, best vs columns/tanks). Shoot **barrels** while enemies stand
+next to them. **Splitters** burst into three fast minis. Bosses call in reinforcements at 66% and 33% HP.
+
+Meta: coins buy permanent upgrades (squad size, firepower, fire rate, loot bonus). They are just sim modifiers;
+the difficulty tuner and the bots always run with zero upgrades.
+
+Four worlds x four levels: Sun Dunes, Red Canyon, Frozen Wastes, Ember Peak, each with its own boss.
+`npx tsx tools/weapons.ts` compares the weapon types in a fixed arena. `?theme=0..3` previews a world.
 
 ## Architecture
 `src/sim` is a deterministic fixed-step simulation with no three.js (also runs headless in Node for

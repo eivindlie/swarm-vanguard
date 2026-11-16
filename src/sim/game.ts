@@ -1,6 +1,6 @@
 import { Rng } from './rng';
 import { computeStat, type Modifier } from './stats';
-import type { BlockReward, EnemyKind, GateSide, LevelDef, WeaponType } from './level';
+import type { BlockReward, EnemyKind, GateSide, LevelDef, Upgrade, WeaponType } from './level';
 import { halfDepth, halfWidth } from './formation';
 
 export const DT = 1 / 60;
@@ -40,6 +40,8 @@ export const ENEMY_DEFS: Record<EnemyKind, EnemyDef> = {
   grunt: { hp: 3, speed: 2, contactDmg: 1, radius: 0.3 },
   runner: { hp: 2, speed: 4.5, contactDmg: 1, radius: 0.28 },
   brute: { hp: 24, speed: 1.4, contactDmg: 6, radius: 0.65 },
+  splitter: { hp: 14, speed: 1.5, contactDmg: 2, radius: 0.5 },
+  mini: { hp: 2, speed: 3.2, contactDmg: 1, radius: 0.22 },
   boss: { hp: 400, speed: 0.8, contactDmg: 14, radius: 1.6 }, // contactDmg = soldiers lost per second while touching
 };
 
@@ -86,6 +88,15 @@ export interface Counter {
   perHit: number;
   max: number;
 }
+export interface Barrel {
+  id: number;
+  x: number;
+  y: number;
+  hp: number;
+}
+export const BARREL_DMG = 16; // explosion damage at hpMul 1
+export const BARREL_RADIUS = 2.8;
+
 export interface Gate {
   id: number;
   pair: number;
@@ -102,6 +113,8 @@ export type GameEvent =
   | { t: 'kill'; x: number; y: number; kind: EnemyKind; id: number }
   | { t: 'blockHit'; x: number; y: number }
   | { t: 'counterHit'; x: number; y: number }
+  | { t: 'barrelHit'; x: number; y: number }
+  | { t: 'bossAdds'; x: number; y: number }
   | { t: 'blockBreak'; x: number; y: number; label: string }
   | { t: 'gate'; x: number; y: number; delta: number; label: string }
   | { t: 'squadHit'; lost: number }
@@ -119,6 +132,7 @@ export interface Input {
 
 export function gateLabel(s: GateSide): string {
   switch (s.op) {
+    case 'upgrade': return s.label ?? 'UPGRADE';
     case 'add': return `+${s.value}`;
     case 'sub': return `-${s.value}`;
     case 'mul': return `x${s.value}`;
@@ -126,8 +140,14 @@ export function gateLabel(s: GateSide): string {
   }
 }
 
+/** Rough worth of a gate in soldiers: lets bots (and hints) compare count gates with upgrade gates. */
+export function gateScore(count: number, s: GateSide): number {
+  return s.op === 'upgrade' ? count + count * 0.3 + 6 : applyGate(count, s);
+}
+
 export function applyGate(count: number, s: GateSide): number {
   switch (s.op) {
+    case 'upgrade': return count;
     case 'add': return count + s.value;
     case 'sub': return Math.max(0, count - s.value);
     case 'mul': return Math.floor(count * s.value);
@@ -147,11 +167,13 @@ export class Game {
   blocks: Block[] = [];
   gates: Gate[] = [];
   counters: Counter[] = [];
+  barrels: Barrel[] = [];
   events: GameEvent[] = [];
   kills = 0;
   weapon: WeaponType = 'rifle';
   private fireCd = 0;
   private grindAcc = 0;
+  private bossPhase = 0;
   private nextId = 1;
   private spawnIdx = 0;
   private pendingSpawns: LevelDef['spawns'];
@@ -219,6 +241,8 @@ export class Game {
           wobble: this.rng.range(0, 6.28),
         });
       }
+    } else if (s.t === 'barrel') {
+      this.barrels.push({ id: this.nextId++, x: s.x, y: s.y, hp: 5 });
     } else if (s.t === 'counter') {
       this.counters.push({ id: this.nextId++, x: s.x, y: s.y, w: s.w, value: s.start, perHit: s.perHit, max: s.max });
     } else if (s.t === 'gates') {
@@ -287,6 +311,7 @@ export class Game {
     this.moveEnemies();
     this.buildGrid();
     this.bulletCollisions();
+    this.bossPhases();
     this.contacts();
     this.gateChecks();
     this.counterChecks();
@@ -394,10 +419,42 @@ export class Game {
     if (e.hp <= 0) {
       this.kills++;
       this.events.push({ t: 'kill', x: e.x, y: e.y, kind: e.kind, id: e.id });
+      if (e.kind === 'splitter') {
+        const def = ENEMY_DEFS.mini;
+        const hp = def.hp * (this.level.hpMul ?? 1);
+        for (let i = 0; i < 3; i++) {
+          this.enemies.push({
+            id: this.nextId++,
+            kind: 'mini',
+            x: clamp(e.x + (i - 1) * 0.45 + this.rng.range(-0.1, 0.1), -LANE_HALF + 0.3, LANE_HALF - 0.3),
+            y: e.y + this.rng.range(-0.2, 0.4),
+            hp,
+            maxHp: hp,
+            awake: true,
+            wobble: this.rng.range(0, 6.28),
+          });
+        }
+      }
     }
   }
 
-  private explode(x: number, y: number, r: number, dmg: number, skip: Enemy): void {
+  /** At 66% and 33% HP the boss calls in two columns of grunts. */
+  private bossPhases(): void {
+    const adds = this.level.bossAdds ?? 0;
+    if (adds <= 0 || this.bossPhase >= 2) return;
+    const boss = this.bosses[0] ?? this.enemies.find((e) => e.kind === 'boss' && e.hp > 0);
+    if (!boss || boss.hp <= 0) return;
+    const frac = boss.hp / boss.maxHp;
+    const need = frac <= 0.33 ? 2 : frac <= 0.66 ? 1 : 0;
+    if (need > this.bossPhase) {
+      this.bossPhase = need;
+      const per = Math.max(1, Math.ceil(adds / 2));
+      for (const x of [-1.8, 1.8]) this.spawn({ t: 'enemies', y: boss.y + 3, x, spreadX: 1.0, spreadY: Math.max(2, per / 5), count: per, kind: 'grunt' });
+      this.events.push({ t: 'bossAdds', x: boss.x, y: boss.y });
+    }
+  }
+
+  private explode(x: number, y: number, r: number, dmg: number, skip: Enemy | null): void {
     this.events.push({ t: 'explosion', x, y, r });
     const reach = Math.ceil(r) + 1;
     const cx = Math.floor(x + 8);
@@ -443,6 +500,20 @@ export class Game {
         }
       }
       if (hitBlock) continue;
+      // explosive barrels absorb bullets and detonate
+      let hitBarrel = false;
+      for (const br of this.barrels) {
+        if (br.hp <= 0) continue;
+        if (Math.abs(b.x - br.x) < 0.6 && Math.abs(b.y - br.y) < 0.6) {
+          br.hp -= b.dmg;
+          b.pierce = 0;
+          hitBarrel = true;
+          this.events.push({ t: 'barrelHit', x: br.x, y: br.y });
+          if (br.hp <= 0) this.explode(br.x, br.y, BARREL_RADIUS, BARREL_DMG * (this.level.hpMul ?? 1), null);
+          break;
+        }
+      }
+      if (hitBarrel) continue;
       // counting blocks absorb bullets and grow
       let hitCounter = false;
       for (const c of this.counters) {
@@ -540,6 +611,16 @@ export class Game {
       sq.count = Math.min(MAX_SQUAD, applyGate(sq.count, g.side));
       sq.maxCount = Math.max(sq.maxCount, sq.count);
       this.events.push({ t: 'gate', x: g.x, y: g.y, delta: sq.count - before, label: gateLabel(g.side) });
+      if (g.side.op === 'upgrade' && g.side.upgrade) this.applyUpgrade(g.side.upgrade);
+    }
+  }
+
+  private applyUpgrade(u: Upgrade): void {
+    if (u.kind === 'weaponType') {
+      this.weapon = u.weapon;
+      this.events.push({ t: 'weapon', weapon: u.weapon });
+    } else {
+      this.mods.push({ stat: u.stat, add: u.add, mul: u.mul, source: 'gate' });
     }
   }
 
@@ -565,6 +646,7 @@ export class Game {
     this.blocks = this.blocks.filter((b) => b.hp > 0 && b.y > sq.y - 3);
     this.gates = this.gates.filter((g) => g.y > sq.y - 3);
     this.counters = this.counters.filter((c) => c.value > 0 && c.y > sq.y - 3);
+    this.barrels = this.barrels.filter((b) => b.hp > 0 && b.y > sq.y - 3);
   }
 
   /** Compact, serialisable snapshot for the debug API and bots. */

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { Game, gateLabel, type Block, type Counter, type Gate } from '../sim/game';
+import { Game, gateLabel, type Barrel, type Block, type Counter, type Gate } from '../sim/game';
 import { propMaterial } from './materials';
-import { blockGeometry, counterGeometry, gateFrameGeometry } from './models';
+import { barrelGeometry, blockGeometry, counterGeometry, gateFrameGeometry } from './models';
 
 // ------------------------------------------------------------------ textures
 
@@ -32,7 +32,14 @@ function textTexture(text: string, fill = '#ffffff'): THREE.CanvasTexture {
   let t = labelCache.get(key);
   if (!t) {
     const [c, g] = mkCanvas(256, 160);
-    outlinedText(g, text, 128, 84, 112, fill);
+    // long upgrade labels shrink to fit the gate; short numbers stay big
+    let size = 112;
+    g.font = `900 ${size}px system-ui, -apple-system, sans-serif`;
+    while (size > 28 && g.measureText(text).width > 222) {
+      size -= 4;
+      g.font = `900 ${size}px system-ui, -apple-system, sans-serif`;
+    }
+    outlinedText(g, text, 128, 84, size, fill);
     t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
     labelCache.set(key, t);
@@ -128,11 +135,21 @@ interface GateView {
 
 const GOOD = '#2f7bff';
 const BAD = '#e23b3b';
+const UP = '#9b4dff';
+
+interface BarrelView {
+  mesh: THREE.Mesh;
+  mat: THREE.MeshToonMaterial;
+  lastHp: number;
+  pulse: number;
+  phase: number;
+}
 
 export class PropViews {
   private blocks = new Map<number, BlockView>();
   private counters = new Map<number, BlockView>();
   private gates = new Map<number, GateView>();
+  private barrels = new Map<number, BarrelView>();
   private time = 0;
 
   constructor(private scene: THREE.Scene) {}
@@ -144,6 +161,36 @@ export class PropViews {
     this.syncBlocks(game.blocks, dt);
     this.syncCounters(game.counters, dt);
     this.syncGates(game.gates, dt);
+    this.syncBarrels(game.barrels, dt);
+  }
+
+  private syncBarrels(barrels: Barrel[], dt: number) {
+    const alive = new Set<number>();
+    for (const b of barrels) {
+      alive.add(b.id);
+      let v = this.barrels.get(b.id);
+      if (!v) {
+        const mat = propMaterial();
+        const mesh = new THREE.Mesh(barrelGeometry(), mat);
+        mesh.position.set(b.x, 0, -b.y);
+        this.scene.add(mesh);
+        v = { mesh, mat, lastHp: b.hp, pulse: 0, phase: b.id * 1.3 };
+        this.barrels.set(b.id, v);
+      }
+      if (b.hp < v.lastHp - 1e-6) v.pulse = 1;
+      v.lastHp = b.hp;
+      v.pulse = Math.max(0, v.pulse - dt * 6);
+      const s = 1 + v.pulse * 0.14 + Math.sin(this.time * 6 + v.phase) * 0.015;
+      v.mesh.scale.set(s, 1 + v.pulse * 0.1 - Math.sin(this.time * 6 + v.phase) * 0.015, s);
+      v.mat.emissive.setScalar(v.pulse * 0.6);
+    }
+    for (const [id, v] of this.barrels) {
+      if (!alive.has(id)) {
+        this.scene.remove(v.mesh);
+        v.mat.dispose();
+        this.barrels.delete(id);
+      }
+    }
   }
 
   private makeLabel(group: THREE.Group, y: number, z: number): { canvas: HTMLCanvasElement; tex: THREE.CanvasTexture } {
@@ -267,13 +314,14 @@ export class PropViews {
       let v = this.gates.get(g.id);
       if (!v) {
         const bad = g.side.op === 'sub' || g.side.op === 'div';
-        const col = bad ? BAD : GOOD;
+        const kind: 'good' | 'bad' | 'up' = g.side.op === 'upgrade' ? 'up' : bad ? 'bad' : 'good';
+        const col = kind === 'bad' ? BAD : kind === 'up' ? UP : GOOD;
         const group = new THREE.Group();
         const mat = new THREE.MeshBasicMaterial({ map: chevronTexture(col), transparent: true, opacity: 0.62, side: THREE.DoubleSide, depthWrite: false });
         const panel = new THREE.Mesh(new THREE.PlaneGeometry(g.w - 0.35, 2.3), mat);
         panel.position.y = 1.35;
         group.add(panel);
-        group.add(new THREE.Mesh(gateFrameGeometry(g.w, bad), new THREE.MeshBasicMaterial({ vertexColors: true })));
+        group.add(new THREE.Mesh(gateFrameGeometry(g.w, kind), new THREE.MeshBasicMaterial({ vertexColors: true })));
         const label = new THREE.Mesh(
           new THREE.PlaneGeometry(2.6, 1.6),
           new THREE.MeshBasicMaterial({ map: textTexture(gateLabel(g.side)), transparent: true, depthWrite: false, side: THREE.DoubleSide }),
@@ -304,6 +352,11 @@ export class PropViews {
     this.blocks.clear();
     for (const v of this.counters.values()) this.dropBlock(v);
     this.counters.clear();
+    for (const v of this.barrels.values()) {
+      this.scene.remove(v.mesh);
+      v.mat.dispose();
+    }
+    this.barrels.clear();
     for (const [, v] of this.gates) {
       this.scene.remove(v.group);
       disposeView(v.group);
@@ -331,6 +384,6 @@ export class PropViews {
   }
 
   counts() {
-    return { blocks: this.blocks.size, gates: this.gates.size, counters: this.counters.size };
+    return { blocks: this.blocks.size, gates: this.gates.size, counters: this.counters.size, barrels: this.barrels.size };
   }
 }

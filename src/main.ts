@@ -4,7 +4,8 @@ import { GameRenderer } from './render/renderer';
 import { Controls } from './input/controls';
 import { Hud } from './ui/hud';
 import { Sfx } from './audio/sfx';
-import { loadSave, metaModifiers, recordWin } from './meta/save';
+import { loadSave, metaModifiers, recordWin, writeSave } from './meta/save';
+import { buy } from './meta/upgrades';
 import { loadSettings, saveSettings } from './meta/settings';
 import { installDebugApi } from './debug/api';
 import { policies } from './sim/bots';
@@ -87,6 +88,10 @@ function restart(level?: number, newSeed?: number) {
 }
 
 function startGame() {
+  if (modsDirty) {
+    modsDirty = false;
+    restart(levelIdx + 1);
+  }
   sfx.unlock();
   sfx.startMusic();
   hud.hideStart();
@@ -106,6 +111,26 @@ hud.mute.addEventListener('click', () => {
 // audio can only start after a user gesture
 window.addEventListener('pointerdown', () => sfx.unlock(), { passive: true });
 hud.startBtn.addEventListener('click', startGame);
+let modsDirty = false; // purchases change the sim modifiers: rebuild the pending game on start
+function onBuy(id: Parameters<typeof buy>[1]) {
+  if (buy(save, id)) {
+    writeSave(save);
+    modsDirty = true;
+    sfx.unlock();
+    sfx.gate(true);
+    buzz(15);
+  }
+  hud.renderShop(save, onBuy);
+}
+function openShop() {
+  hud.renderShop(save, onBuy);
+  hud.showShop();
+}
+hud.shopBtn.addEventListener('click', openShop);
+hud.shopBack.addEventListener('click', () => {
+  hud.hideShop();
+  refreshMenu();
+});
 hud.endBtn.addEventListener('click', () => {
   const won = game.phase === 'won';
   restart(won && levelIdx + 1 < LEVELS.length ? levelIdx + 2 : levelIdx + 1);
@@ -175,6 +200,12 @@ function handleEvents() {
       case 'squadHit': sfx.squadHit(); if (e.lost >= 3) buzz(20); break;
       case 'leak': sfx.squadHit(); buzz(30); break;
       case 'explosion': sfx.blockBreak(); break;
+      case 'barrelHit': sfx.blockHit(); break;
+      case 'bossAdds':
+        hud.showBanner('REINFORCEMENTS!', '⚠ THE BOSS CALLS');
+        sfx.squadHit();
+        buzz([40, 30, 80]);
+        break;
       case 'weapon': sfx.gate(true); buzz([15, 30, 15]); break;
       case 'win': sfx.win(); buzz([30, 40, 30, 40, 90]); break;
       case 'lose': sfx.lose(); buzz([80, 40, 120]); break;

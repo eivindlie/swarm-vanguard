@@ -14,7 +14,9 @@
     #hud { position: absolute; inset: 0; pointer-events: none; color: #fff; }
     #top { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; align-items: center; gap: 10px; }
     #lvl { font-weight: 800; font-size: 14px; text-shadow: 0 2px 4px #000a; }
-    #bar { flex: 1; height: 10px; background: #0006; border-radius: 6px; overflow: hidden; }
+    #barWrap { flex: 1; position: relative; }
+    #barBoss { position: absolute; right: -4px; top: -9px; font-size: 18px; filter: drop-shadow(0 2px 2px #000a); }
+    #bar { width: 100%; height: 10px; background: #0006; border-radius: 6px; overflow: hidden; }
     #bar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg,#ffd23a,#ff8a1f); }
     #mute { pointer-events: auto; width: 34px; height: 34px; border-radius: 50%; border: 0; background: #0006; color: #fff; font-size: 16px; }
     #boss { position: absolute; top: 54px; left: 50%; transform: translateX(-50%); width: 62%; display: none; align-items: center; gap: 8px; font-weight: 900; font-size: 13px; text-shadow: 0 2px 4px #000a; }
@@ -36,12 +38,22 @@
     #count { position: absolute; transform: translate(-50%, -100%); font-weight: 900; font-size: 26px; color: #fff; -webkit-text-stroke: 4px #1b3a8a; paint-order: stroke fill; text-shadow: 0 3px 0 #1b3a8a; white-space: nowrap; }
     .pop { position: absolute; transform: translate(-50%, -50%); font-weight: 900; font-size: 22px; color: #ffe27a; -webkit-text-stroke: 4px #000a; paint-order: stroke fill; animation: pop 0.9s ease-out forwards; white-space: nowrap; }
     @keyframes pop { from { opacity: 1; transform: translate(-50%, -50%) scale(0.8); } to { opacity: 0; transform: translate(-50%, -160%) scale(1.3); } }
-    .overlay { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: #000a; pointer-events: auto; text-align: center; padding: 24px; color: #fff; }
+    .overlay { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: safe center; overflow-y: auto; gap: 12px; background: #000a; pointer-events: auto; text-align: center; padding: 24px; color: #fff; }
     .overlay.show { display: flex; }
     .overlay h1 { margin: 0; font-size: 40px; text-shadow: 0 4px 0 #0008; }
     .overlay p { margin: 0; opacity: 0.85; }
     #coins { font-weight: 800; color: #ffe27a; }
-    #levels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: 100%; max-width: 330px; }
+    #levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; width: 100%; max-width: 310px; }
+    .lvh { grid-column: 1 / -1; font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #ffe27a; text-align: left; margin-top: 4px; opacity: 0.9; }
+    #shop { background: #0b0e22; z-index: 5; }
+    #shop h2 { margin: 0; font-size: 28px; }
+    .row { display: flex; align-items: center; gap: 10px; width: 100%; max-width: 330px; background: #ffffff14; border-radius: 14px; padding: 10px 12px; text-align: left; }
+    .row .ic { font-size: 26px; }
+    .row .tx { flex: 1; font-size: 13px; line-height: 1.25; }
+    .row .tx b { font-size: 15px; display: block; }
+    .row .tx i { font-style: normal; color: #9fe3a8; }
+    .buy { border: 0; border-radius: 10px; padding: 8px 12px; font-weight: 900; font-size: 14px; color: #1b1b2f; background: linear-gradient(#ffe27a,#ffb21f); box-shadow: 0 3px 0 #a86a00; min-width: 74px; }
+    .buy:disabled { background: #555b6e; color: #aab; box-shadow: 0 3px 0 #333847; }
     .lv { border: 0; border-radius: 12px; padding: 8px 0 6px; font-weight: 900; font-size: 18px; color: #fff; background: #3558c8; box-shadow: 0 3px 0 #1d3380; }
     .lv small { display: block; font-size: 11px; letter-spacing: 1px; color: #ffe27a; min-height: 14px; }
     .lv.sel { background: #ffb21f; color: #1b1b2f; box-shadow: 0 3px 0 #a86a00; }
@@ -55,14 +67,15 @@
 <body>
   <div id="stage">
     <div id="hud">
-      <div id="top"><span id="lvl">LEVEL 1</span><div id="bar"><i></i></div><button id="mute" aria-label="Mute">🔊</button></div>
+      <div id="top"><span id="lvl">LEVEL 1</span><div id="barWrap"><div id="bar"><i></i></div><span id="barBoss">💀</span></div><button id="mute" aria-label="Mute">🔊</button></div>
       <div id="boss"><span>BOSS</span><div class="bb"><i></i></div><b id="bossHp"></b></div>
       <div id="weapon">RIFLE</div>
       <div id="banner"></div>
       <div id="hint"><div class="hand">👆</div><span>DRAG TO STEER</span></div>
       <div id="count">0</div>
     </div>
-    <div class="overlay show" id="start"><h1>SWARM VANGUARD</h1><p>Drag to steer. Shoot blocks, pick gates, grow your squad.</p><div id="coins"></div><div id="levels"></div><div id="toggles"></div><button class="btn" id="startBtn">Tap to start</button></div>
+    <div class="overlay show" id="start"><h1>SWARM VANGUARD</h1><p>Drag to steer. Shoot blocks, pick gates, grow your squad.</p><div id="coins"></div><div id="levels"></div><div id="toggles"></div><button class="btn" id="startBtn">Tap to start</button><button class="btn ghost" id="shopBtn">Upgrades</button></div>
+    <div class="overlay" id="shop"><h2>UPGRADES</h2><div id="shopCoins" style="font-weight:800;color:#ffe27a"></div><div id="shopRows" style="display:flex;flex-direction:column;gap:8px;width:100%;align-items:center"></div><button class="btn ghost" id="shopBack">Back</button></div>
     <div class="overlay" id="end"><h1 id="endTitle"></h1><div id="stars"></div><p id="endText"></p><button class="btn" id="endBtn">Retry</button><button class="btn ghost" id="menuBtn">Level select</button></div>
   </div>
   <script type="module" src="/src/main.ts"></script>

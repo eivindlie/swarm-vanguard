@@ -10,7 +10,7 @@ const MAX_ENEMIES = 700;
 const MAX_BULLETS = 400;
 const FLASH_TIME = 0.14;
 // big units flash less so their model stays readable under heavy fire
-const FLASH_GAIN: Record<EnemyKind, number> = { grunt: 1, runner: 1, brute: 0.55, boss: 0.4 };
+const FLASH_GAIN: Record<EnemyKind, number> = { grunt: 1, runner: 1, brute: 0.55, splitter: 0.7, mini: 1, boss: 0.4 };
 
 const BULLET_STYLE: Record<WeaponType, { color: number; s: [number, number, number] }> = {
   rifle: { color: 0xffd23a, s: [1, 1, 1] },
@@ -20,7 +20,7 @@ const BULLET_STYLE: Record<WeaponType, { color: number; s: [number, number, numb
 };
 
 // how fast each kind's walk cycle runs
-const RUN_RATE: Record<EnemyKind, number> = { grunt: 1.0, runner: 1.7, brute: 0.75, boss: 0.5 };
+const RUN_RATE: Record<EnemyKind, number> = { grunt: 1.0, runner: 1.7, brute: 0.75, splitter: 0.9, mini: 2.0, boss: 0.5 };
 
 type CorpseKind = EnemyKind | 'soldier';
 
@@ -45,6 +45,8 @@ interface Unit {
   attrs: AnimAttrs;
   max: number;
 }
+
+const SHADOW: Record<EnemyKind, number> = { grunt: 1.1, runner: 0.9, brute: 2.6, splitter: 2.0, mini: 0.8, boss: 5.5 };
 
 const hash01 = (id: number) => {
   const s = Math.sin(id * 12.9898) * 43758.5453;
@@ -77,6 +79,8 @@ export class Crowd {
     this.enemies.grunt = this.unit(M.gruntGeometry(), MAX_ENEMIES, false);
     this.enemies.runner = this.unit(M.runnerGeometry(), MAX_ENEMIES, false);
     this.enemies.brute = this.unit(M.bruteGeometry(), 90, true);
+    this.enemies.splitter = this.unit(M.splitterGeometry(), 160, false);
+    this.enemies.mini = this.unit(M.miniGeometry(), 400, false);
     this.enemies.boss = this.unit(M.bossGeometry('golem'), 2, true, 0.06);
     this.bossVariant = 'golem';
 
@@ -84,6 +88,8 @@ export class Crowd {
     this.corpseMeshes.grunt = this.unit(M.gruntGeometry(), 220, false);
     this.corpseMeshes.runner = this.unit(M.runnerGeometry(), 90, false);
     this.corpseMeshes.brute = this.unit(M.bruteGeometry(), 40, false);
+    this.corpseMeshes.splitter = this.unit(M.splitterGeometry(), 60, false);
+    this.corpseMeshes.mini = this.unit(M.miniGeometry(), 160, false);
     this.corpseMeshes.boss = this.unit(M.bossGeometry('golem'), 2, false);
 
     const shadowGeo = new THREE.CircleGeometry(0.28, 10);
@@ -263,7 +269,7 @@ export class Crowd {
   }
 
   private drawEnemies(game: Game, dt: number, camera: THREE.Camera) {
-    const counts: Record<EnemyKind, number> = { grunt: 0, runner: 0, brute: 0, boss: 0 };
+    const counts: Record<EnemyKind, number> = { grunt: 0, runner: 0, brute: 0, splitter: 0, mini: 0, boss: 0 };
     const d = this.dummy;
     let bars = 0;
     for (const e of game.enemies) {
@@ -279,7 +285,7 @@ export class Crowd {
       u.attrs.anim.setXY(i, hash01(e.id) * 6.28, e.awake ? RUN_RATE[e.kind] * (0.9 + hash01(e.id + 7) * 0.2) : 0);
       const f = this.flash.get(e.id);
       u.attrs.flash.setX(i, f ? Math.min(1, f / FLASH_TIME) * FLASH_GAIN[e.kind] : 0);
-      this.pushShadow(e.x, -e.y, e.kind === 'boss' ? 5.5 : e.kind === 'brute' ? 2.6 : e.kind === 'runner' ? 0.9 : 1.1);
+      this.pushShadow(e.x, -e.y, SHADOW[e.kind]);
 
       if (e.kind === 'brute' && e.hp < e.maxHp && bars < 90) {
         const frac = Math.max(0.02, e.hp / e.maxHp);
@@ -327,7 +333,7 @@ export class Crowd {
   }
 
   private drawCorpses(dt: number) {
-    const counts: Record<CorpseKind, number> = { soldier: 0, grunt: 0, runner: 0, brute: 0, boss: 0 };
+    const counts: Record<CorpseKind, number> = { soldier: 0, grunt: 0, runner: 0, brute: 0, splitter: 0, mini: 0, boss: 0 };
     const d = this.dummy;
     for (let c = this.corpses.length - 1; c >= 0; c--) {
       const k = this.corpses[c];

@@ -8,9 +8,13 @@ const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+await page.addInitScript(() => localStorage.setItem('swarmvanguard.save', JSON.stringify({ version: 1, unlockedLevel: 9, coins: 260, stars: { 1: 3, 2: 3, 3: 2, 4: 3, 5: 1, 6: 2, 7: 3, 8: 2 }, upgrades: { size: 2, damage: 1 } })));
 await page.goto('http://localhost:5196/');
 await page.waitForFunction(() => window.__game);
 await page.screenshot({ path: 'screenshots/menu.png' });
+await page.getByRole('button', { name: 'Upgrades' }).click();
+await page.screenshot({ path: 'screenshots/shop.png' });
+await page.getByRole('button', { name: 'Back' }).click();
 // force a win: run the naive sim to the end through the debug API
 await page.evaluate(() => { window.__game.start(); window.__game.pause(); window.__game.setInput(0); });
 await page.evaluate(() => { const g = window.__game.raw(); g.squad.count = 250; g.squad.maxCount = 250; });

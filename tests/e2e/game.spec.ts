@@ -110,3 +110,31 @@ test('drag target never exceeds what the squad can reach (no dead zone)', async 
   // after dragging back left the squad must already be left of centre: no hidden overshoot to unwind
   expect(x).toBeLessThan(0.5);
 });
+
+test('shop: buying an upgrade spends coins, persists and applies at the next start', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('swarmvanguard.save')) {
+      localStorage.setItem('swarmvanguard.save', JSON.stringify({ version: 1, unlockedLevel: 3, coins: 500, stars: {}, upgrades: {} }));
+    }
+  });
+  await page.goto('/?seed=1');
+  await page.waitForFunction(() => (window as any).__game);
+  await page.getByRole('button', { name: 'Upgrades' }).click();
+  await page.locator('#shopRows .row').first().locator('button').click(); // squad size level 1 costs 40
+  await expect(page.locator('#shopCoins')).toHaveText('Coins: 460');
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: /Play level/ }).click();
+  const state = await page.evaluate(() => (window as any).__game.getState());
+  expect(state.squad.count).toBe(6); // base 5 + 1
+  const save = await page.evaluate(() => JSON.parse(localStorage.getItem('swarmvanguard.save')!));
+  expect(save.upgrades.size).toBe(1);
+  expect(save.coins).toBe(460);
+});
+
+test('upgrade gates, barrels and splitters are on screen without errors', async ({ page }) => {
+  await page.goto('/?level=12&seed=1&autoplay=balanced&autostart=1&speed=6');
+  await page.waitForFunction(() => (window as any).__game);
+  await page.waitForTimeout(4000);
+  const st = await page.evaluate(() => (window as any).__game.stats());
+  expect(st.drawCalls).toBeGreaterThan(5);
+});

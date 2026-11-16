@@ -1,4 +1,7 @@
 import { WEAPONS, type Game } from '../sim/game';
+import { THEMES, themeIndexForLevel } from '../render/themes';
+import { UPGRADES, levelOf } from '../meta/upgrades';
+import type { SaveData } from '../meta/save';
 import type { GameRenderer } from '../render/renderer';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -19,6 +22,9 @@ export class Hud {
   readonly endBtn = $<HTMLButtonElement>('endBtn');
   readonly mute = $<HTMLButtonElement>('mute');
   readonly menuBtn = $<HTMLButtonElement>('menuBtn');
+  readonly shopBtn = $<HTMLButtonElement>('shopBtn');
+  readonly shopBack = $<HTMLButtonElement>('shopBack');
+  readonly shop = $('shop');
 
   private bossAnnounced = false;
 
@@ -62,6 +68,12 @@ export class Hud {
     const host = $('levels');
     host.textContent = '';
     for (let id = 1; id <= total; id++) {
+      if (id === 1 || themeIndexForLevel(id) !== themeIndexForLevel(id - 1)) {
+        const h = document.createElement('div');
+        h.className = 'lvh';
+        h.textContent = THEMES[themeIndexForLevel(id)].name.toUpperCase();
+        host.appendChild(h);
+      }
       const b = document.createElement('button');
       b.className = 'lv' + (id === selected ? ' sel' : '');
       b.disabled = id > unlocked;
@@ -74,6 +86,29 @@ export class Hud {
   }
 
   showStart() { this.start.classList.add('show'); }
+
+  renderShop(save: SaveData, onBuy: (id: (typeof UPGRADES)[number]['id']) => void) {
+    $('shopCoins').textContent = `Coins: ${save.coins}`;
+    const host = $('shopRows');
+    host.textContent = '';
+    for (const u of UPGRADES) {
+      const lvl = levelOf(save, u.id);
+      const maxed = lvl >= u.max;
+      const row = document.createElement('div');
+      row.className = 'row';
+      const next = maxed ? '' : `<i>→ ${u.effect(lvl + 1)}</i>`;
+      row.innerHTML = `<span class="ic">${u.icon}</span><span class="tx"><b>${u.name} · ${lvl}/${u.max}</b>${u.effect(lvl)}<br>${next}</span>`;
+      const btn = document.createElement('button');
+      btn.className = 'buy';
+      btn.disabled = maxed || save.coins < u.cost(lvl);
+      btn.textContent = maxed ? 'MAX' : `${u.cost(lvl)} 🪙`;
+      btn.addEventListener('click', () => onBuy(u.id));
+      row.appendChild(btn);
+      host.appendChild(row);
+    }
+  }
+  showShop() { this.shop.classList.add('show'); }
+  hideShop() { this.shop.classList.remove('show'); }
 
   setLevel(id: number) {
     this.lvl.textContent = `LEVEL ${id}`;

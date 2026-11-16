@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Game, applyGate } from '../src/sim/game';
+import { Game, applyGate, gateScore } from '../src/sim/game';
 import { computeStat } from '../src/sim/stats';
 import { LEVELS } from '../src/levels';
 const level01 = LEVELS[0];
@@ -190,5 +190,66 @@ describe('weapon types', () => {
     for (let i = 0; i < 20; i++) g.step({ targetX: -3 });
     expect(e.hp).toBeCloseTo(99, 5);
     expect(ENEMY_DEFS.grunt.hp).toBeGreaterThan(0);
+  });
+});
+
+describe('new mechanics', () => {
+  it('an upgrade gate changes the weapon and not the head count', () => {
+    const g = new Game(
+      tiny([{ t: 'gates', y: 10, left: { op: 'upgrade', value: 0, upgrade: { kind: 'weaponType', weapon: 'rocket' }, label: 'ROCKETS' }, right: { op: 'add', value: 5 } }]),
+      1,
+    );
+    for (let i = 0; i < 300; i++) g.step({ targetX: -2 });
+    expect(g.weapon).toBe('rocket');
+    expect(g.squad.count).toBe(5);
+  });
+  it('a stat upgrade gate adds a modifier', () => {
+    const g = new Game(
+      tiny([{ t: 'gates', y: 10, left: { op: 'upgrade', value: 0, upgrade: { kind: 'stat', stat: 'damage', mul: 2 }, label: 'DMG' }, right: { op: 'add', value: 5 } }]),
+      1,
+    );
+    const before = g.stat('damage');
+    for (let i = 0; i < 300; i++) g.step({ targetX: -2 });
+    expect(g.stat('damage')).toBeCloseTo(before * 2, 5);
+  });
+  it('a barrel explodes when shot and kills the enemies standing next to it', () => {
+    const g = withSquad(
+      [
+        { t: 'barrel', y: 14, x: 0 },
+        { t: 'enemies', y: 14.8, x: 0, spreadX: 1, spreadY: 0.5, count: 8, kind: 'grunt' },
+      ],
+      8,
+    );
+    let boom = 0;
+    for (let i = 0; i < 400 && g.barrels.length; i++) {
+      g.step({ targetX: 0 });
+      boom += g.events.filter((e) => e.t === 'explosion').length;
+    }
+    expect(boom).toBeGreaterThan(0);
+    expect(g.kills).toBeGreaterThanOrEqual(6);
+  });
+  it('a splitter bursts into three minis when shot', () => {
+    const g = withSquad([{ t: 'enemies', y: 22, x: 0, spreadX: 0, spreadY: 0, count: 1, kind: 'splitter' }], 12);
+    let sawMini = 0;
+    for (let i = 0; i < 400; i++) {
+      g.step({ targetX: 0 });
+      sawMini = Math.max(sawMini, g.enemies.filter((e) => e.kind === 'mini').length);
+    }
+    expect(sawMini).toBe(3);
+  });
+  it('the boss calls in reinforcements at 66% and 33% HP, once each', () => {
+    const lvl: LevelDef = { id: 97, name: 'b', length: 30, coins: 1, bossAdds: 6, spawns: [{ t: 'enemies', y: 40, x: 0, spreadX: 0, spreadY: 0, count: 1, kind: 'boss', hp: 600 }] };
+    const g = new Game(lvl, 1, [{ stat: 'startSize', add: 25 }]);
+    let waves = 0;
+    for (let i = 0; i < 3000 && g.phase === 'playing'; i++) {
+      g.step({ targetX: 0 });
+      waves += g.events.filter((e) => e.t === 'bossAdds').length;
+    }
+    expect(waves).toBe(2);
+  });
+  it('gateScore values an upgrade between nothing and a real gain', () => {
+    const up = { op: 'upgrade', value: 0 } as const;
+    expect(gateScore(20, up)).toBeGreaterThan(20);
+    expect(gateScore(20, { op: 'add', value: 30 })).toBeGreaterThan(gateScore(20, up));
   });
 });

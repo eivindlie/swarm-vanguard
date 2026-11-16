@@ -304,10 +304,10 @@ function cached(key: string, make: () => THREE.BufferGeometry): THREE.BufferGeom
 }
 
 /** Posts + lamps + top bar of a gate as ONE vertex-coloured mesh (unlit). */
-export function gateFrameGeometry(w: number, bad: boolean): THREE.BufferGeometry {
-  return cached(`gate|${w}|${bad}`, () => {
-    const glow = bad ? 0xff6a6a : 0x6aa8ff;
-    const post = bad ? 0x8a2a2a : 0x2a4f9a;
+export function gateFrameGeometry(w: number, kind: 'good' | 'bad' | 'up'): THREE.BufferGeometry {
+  return cached(`gate|${w}|${kind}`, () => {
+    const glow = kind === 'bad' ? 0xff6a6a : kind === 'up' ? 0xc99bff : 0x6aa8ff;
+    const post = kind === 'bad' ? 0x8a2a2a : kind === 'up' ? 0x5a2a9a : 0x2a4f9a;
     return build([
       { geo: box(w, 0.24, 0.24), color: glow, pos: [0, 2.6, 0] },
       { geo: box(0.28, 2.7, 0.28), color: post, pos: [-w / 2, 1.35, 0] },
@@ -352,4 +352,52 @@ export function finishGeometry(width: number, pillar: number, cap_: number): THR
     { geo: box(1, 0.4, 1), color: cap_, pos: [-width / 2, 5.1, 0] },
     { geo: box(1, 0.4, 1), color: cap_, pos: [width / 2, 5.1, 0] },
   ]);
+}
+
+// ------------------------------------------------------------ slimes and barrels
+
+export function splitterGeometry(): THREE.BufferGeometry {
+  const body = 0x5ad15a;
+  const spot = 0x38a038;
+  const eyeW = 0xffffff;
+  const pupil = 0x1b2a1b;
+  return build([
+    { geo: new THREE.SphereGeometry(0.52, 7, 5), color: body, pos: [0, 0.56, 0], scale: [1, 0.88, 1] },
+    { geo: sph(0.17), color: spot, pos: [0.28, 0.86, 0.15] },
+    { geo: sph(0.13), color: spot, pos: [-0.32, 0.7, 0.2] },
+    { geo: sph(0.11), color: spot, pos: [0.1, 1.0, 0.0] },
+    { geo: sph(0.14), color: eyeW, pos: [-0.18, 0.7, -0.44], part: PART.head, pivot: [0, 0.6, 0] },
+    { geo: sph(0.14), color: eyeW, pos: [0.18, 0.7, -0.44], part: PART.head, pivot: [0, 0.6, 0] },
+    { geo: sph(0.065), color: pupil, pos: [-0.18, 0.69, -0.56], part: PART.head, pivot: [0, 0.6, 0] },
+    { geo: sph(0.065), color: pupil, pos: [0.18, 0.69, -0.56], part: PART.head, pivot: [0, 0.6, 0] },
+    { geo: box(0.3, 0.07, 0.06), color: pupil, pos: [0, 0.46, -0.5], part: PART.head, pivot: [0, 0.6, 0] },
+    { geo: box(0.2, 0.18, 0.22), color: spot, pos: [-0.22, 0.09, 0], part: PART.legL, pivot: [-0.22, 0.18, 0] },
+    { geo: box(0.2, 0.18, 0.22), color: spot, pos: [0.22, 0.09, 0], part: PART.legR, pivot: [0.22, 0.18, 0] },
+  ]);
+}
+
+export function miniGeometry(): THREE.BufferGeometry {
+  const body = 0x8cf08c;
+  const spot = 0x58c458;
+  return build([
+    { geo: new THREE.SphereGeometry(0.22, 6, 4), color: body, pos: [0, 0.24, 0], scale: [1, 0.9, 1] },
+    { geo: sph(0.06), color: 0xffffff, pos: [-0.08, 0.3, -0.19], part: PART.head, pivot: [0, 0.25, 0] },
+    { geo: sph(0.06), color: 0xffffff, pos: [0.08, 0.3, -0.19], part: PART.head, pivot: [0, 0.25, 0] },
+    { geo: box(0.07, 0.07, 0.07), color: spot, pos: [-0.09, 0.04, 0], part: PART.legL, pivot: [-0.09, 0.08, 0] },
+    { geo: box(0.07, 0.07, 0.07), color: spot, pos: [0.09, 0.04, 0], part: PART.legR, pivot: [0.09, 0.08, 0] },
+  ]);
+}
+
+export function barrelGeometry(): THREE.BufferGeometry {
+  return cached('barrel', () =>
+    build([
+      { geo: cyl(0.4, 0.44, 1.0, 9), color: 0xc4372b, pos: [0, 0.5, 0] },
+      { geo: cyl(0.46, 0.46, 0.12, 9), color: 0x3a2a2a, pos: [0, 0.18, 0] },
+      { geo: cyl(0.46, 0.46, 0.12, 9), color: 0x3a2a2a, pos: [0, 0.82, 0] },
+      { geo: cyl(0.415, 0.415, 0.2, 9), color: 0xffd23a, pos: [0, 0.5, 0] }, // hazard band
+      { geo: box(0.1, 0.06, 0.1), color: 0x1b1b1b, pos: [0.05, 0.5, -0.43] },
+      { geo: cyl(0.1, 0.1, 0.08, 6), color: 0x3a2a2a, pos: [0, 1.04, 0] },
+      { geo: cone(0.06, 0.18, 5), color: 0xff7a1a, pos: [0, 1.17, 0] }, // fuse flame
+    ]),
+  );
 }

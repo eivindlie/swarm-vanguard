@@ -1,6 +1,7 @@
 // Versioned save in localStorage. Meta-progression (upgrades) hooks in via `upgrades`
 // and `metaModifiers()`; the sim already computes stats as base + modifier list.
 import type { Modifier } from '../sim/stats';
+import { coinMultiplier, modifiersFromSave } from './upgrades';
 
 export interface SaveData {
   version: 1;
@@ -42,9 +43,9 @@ export function writeSave(s: SaveData): void {
   }
 }
 
-/** Permanent upgrades become modifiers fed into the sim. Empty until the shop exists. */
-export function metaModifiers(_s: SaveData): Modifier[] {
-  return [];
+/** Permanent upgrades (shop) become modifiers fed into the sim. */
+export function metaModifiers(s: SaveData): Modifier[] {
+  return modifiersFromSave(s);
 }
 
 export function starsFor(remaining: number, maxCount: number): number {
@@ -57,7 +58,7 @@ export function recordWin(s: SaveData, levelId: number, levelCoins: number, rema
   const stars = starsFor(remaining, maxCount);
   const best = s.stars[levelId] ?? 0;
   const firstClear = best === 0;
-  const coins = levelCoins + (stars - 1) * 5 + (firstClear ? levelCoins : 0);
+  const coins = Math.round((levelCoins + (stars - 1) * 5 + (firstClear ? levelCoins : 0)) * coinMultiplier(s));
   s.coins += coins;
   s.stars[levelId] = Math.max(best, stars);
   s.unlockedLevel = Math.max(s.unlockedLevel, Math.min(totalLevels, levelId + 1));

@@ -1,4 +1,4 @@
-import { Game, LANE_HALF, applyGate, type Gate } from './game';
+import { Game, LANE_HALF, gateScore, type Gate } from './game';
 
 export type Policy = (g: Game) => number;
 
@@ -32,7 +32,7 @@ function bestGateX(g: Game, pair: Gate[]): number {
   let bestX = 0;
   let bestScore = -Infinity;
   for (const gt of pair) {
-    const score = applyGate(g.squad.count, gt.side);
+    const score = gateScore(g.squad.count, gt.side);
     if (score > bestScore) {
       bestScore = score;
       bestX = gt.x;
