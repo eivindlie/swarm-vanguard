@@ -8,7 +8,7 @@ import {
   upShotgun, upRocket, upLaser, upDamage, upRate, upPierce,
 } from './builder';
 
-export const LEVEL_COUNT = 16;
+export const LEVEL_COUNT = 20;
 
 // Four worlds of four levels each (see render/themes.ts): desert, canyon, frost, volcano.
 const NAMES = [
@@ -16,6 +16,7 @@ const NAMES = [
   'Red Canyon', 'Echo Gorge', 'Rust Bridge', 'Mesa Run',
   'Frozen Lake', 'Snow Drift', 'Ice Gate', 'Whiteout',
   'Ember Road', 'Ash Fields', 'Magma Pass', 'The Core',
+  'Vine Gate', 'Ruin Run', 'Temple Steps', 'Idol Grounds',
 ];
 
 type Overrides = Record<number, number>;
@@ -73,6 +74,8 @@ function generated(id: number, K: (id: number) => number, variant = (variants as
     if (id >= 5 && w % 2 === 1) b.horde(Math.round(n * 0.35), 'runner', { x: hx, w: 1.7, after: 8 });
     if (id >= 4 && w % 3 === 2) b.horde(Math.max(2, Math.round(lid / 2)), 'brute', { x: hx, w: 1.6, after: 11 });
     if (id >= 6 && w % 3 === 1) b.horde(Math.max(2, Math.round(2 + lid / 3)), 'splitter', { x: hx, w: 1.5, after: 10 });
+    // page 2: armoured Bulwarks (rifles and shotguns barely scratch them; rockets, lasers and blasts do the job)
+    if (id >= 18 && w % 2 === 0 && w > 0) b.horde(Math.max(2, Math.round(lid / 4)), 'bulwark', { x: hx, w: 1.5, after: 12 });
     // an elite Warlord: tough, does not die on contact and grinds the squad until it is killed
     if (id >= 6 && w % 4 === 3) b.horde(id >= 12 ? 2 : 1, 'elite', { x: hx, w: 1.2, after: 12 });
     // a gate pair: one decent side, one trap. From level 3 on, many pairs offer an upgrade instead.

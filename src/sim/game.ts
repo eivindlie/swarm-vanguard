@@ -37,6 +37,7 @@ export interface EnemyDef {
   radius: number;
   grind?: boolean; // survives contact and keeps eating the squad until killed
   holds?: boolean; // stops walking once it touches the squad and pins it in place until it is dead
+  armor?: number; // damage multiplier against rifle/shotgun bullets (rockets, lasers and explosions ignore it)
 }
 export const ENEMY_DEFS: Record<EnemyKind, EnemyDef> = {
   grunt: { hp: 3, speed: 2, contactDmg: 1, radius: 0.3 },
@@ -44,6 +45,7 @@ export const ENEMY_DEFS: Record<EnemyKind, EnemyDef> = {
   brute: { hp: 24, speed: 1.4, contactDmg: 6, radius: 0.65 },
   splitter: { hp: 14, speed: 1.5, contactDmg: 2, radius: 0.5 },
   mini: { hp: 2, speed: 3.2, contactDmg: 1, radius: 0.22 },
+  bulwark: { hp: 28, speed: 1.7, contactDmg: 3, radius: 0.6, armor: 0.3 },
   elite: { hp: 90, speed: 2.4, contactDmg: 9, radius: 0.75, grind: true, holds: true },
   boss: { hp: 400, speed: 0.8, contactDmg: 14, radius: 1.6, grind: true },
 };
@@ -248,6 +250,20 @@ export class Game {
   /** The keystone block of a siege level (undefined in lane levels or once destroyed). */
   get keystone(): Block | undefined {
     return this.blocks.find((b) => b.keystone && b.hp > 0);
+  }
+
+  /** Total HP of all keystones still standing (a siege can have two). */
+  keystoneInfo(): { hp: number; max: number } | null {
+    let hp = 0;
+    let max = 0;
+    let any = false;
+    for (const b of this.blocks) {
+      if (!b.keystone) continue;
+      any = true;
+      max += b.maxHp;
+      if (b.hp > 0) hp += b.hp;
+    }
+    return any && hp > 0 ? { hp, max } : null;
   }
 
   /** Enemies still to come (scheduled waves plus the next escalation): drives the visible mass under the roof. */
@@ -543,7 +559,8 @@ export class Game {
     }
   }
 
-  private explode(x: number, y: number, r: number, dmg: number, skip: Enemy | null): void {
+  /** `chain`: a barrel blast that sets off barrels next to it (other explosions do not). */
+  private explode(x: number, y: number, r: number, dmg: number, skip: Enemy | null, chain = false): void {
     this.events.push({ t: 'explosion', x, y, r });
     const reach = Math.ceil(r) + 1;
     const cx = Math.floor(x + 8);
@@ -565,6 +582,19 @@ export class Game {
       if (e.hp <= 0 || e === skip) continue;
       const rr = r + ENEMY_DEFS.boss.radius;
       if ((e.x - x) ** 2 + (e.y - y) ** 2 < rr * rr) this.damageEnemy(e, dmg);
+    }
+    if (chain) {
+      // a chain reaction: barrels caught in the blast go off too (each barrel can only explode once)
+      const caught: Barrel[] = [];
+      for (const br of this.barrels) {
+        if (br.hp <= 0) continue;
+        if ((br.x - x) ** 2 + (br.y - y) ** 2 < (r + 0.6) * (r + 0.6)) {
+          br.hp = 0;
+          caught.push(br);
+          this.events.push({ t: 'barrelHit', x: br.x, y: br.y });
+        }
+      }
+      for (const br of caught) this.explode(br.x, br.y, r, dmg, null, true);
     }
   }
 
@@ -598,7 +628,7 @@ export class Game {
           b.pierce = 0;
           hitBarrel = true;
           this.events.push({ t: 'barrelHit', x: br.x, y: br.y });
-          if (br.hp <= 0) this.explode(br.x, br.y, BARREL_RADIUS, BARREL_DMG * (this.level.hpMul ?? 1), null);
+          if (br.hp <= 0) this.explode(br.x, br.y, BARREL_RADIUS, BARREL_DMG * (this.level.hpMul ?? 1), null, true);
           break;
         }
       }
@@ -620,7 +650,8 @@ export class Game {
       while (b.pierce > 0 && (e = this.enemyAt(b))) {
         b.hit.push(e.id);
         b.pierce--;
-        this.damageEnemy(e, b.dmg);
+        const armor = ENEMY_DEFS[e.kind].armor;
+        this.damageEnemy(e, armor && (b.kind === 'rifle' || b.kind === 'shotgun') ? b.dmg * armor : b.dmg);
         if (b.splash > 0) {
           this.explode(b.x, b.y, b.splash, b.dmg * 0.7, e);
           b.pierce = 0; // rockets detonate on the first target
@@ -634,8 +665,8 @@ export class Game {
     this.applyReward(r);
     const label = r.kind === 'soldiers' ? `+${r.n}` : r.label;
     this.events.push({ t: 'blockBreak', x: bl.x, y: bl.y, label, big: bl.maxHp >= 300, gain: soldiersIn(r) });
-    if (bl.keystone) {
-      // the roof comes down: everything still alive is crushed and the level is won
+    if (bl.keystone && !this.blocks.some((o) => o.keystone && o !== bl && o.hp > 0)) {
+      // the last keystone has fallen: the roof comes down, everything still alive is crushed and the level is won
       this.keystoneDown = true;
       this.events.push({ t: 'collapse', x: bl.x, y: bl.y });
       let shown = 0;

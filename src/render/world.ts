@@ -158,6 +158,11 @@ function checkerTexture(): THREE.CanvasTexture {
 
 function decorGeometry(kind: DecorKind): THREE.BufferGeometry {
   switch (kind) {
+    case 'palm': return M.palmGeometry();
+    case 'bush': return M.bushGeometry();
+    case 'ruinPillar': return M.ruinPillarGeometry();
+    case 'temple': return M.templeGeometry();
+    case 'mossRock': return M.mossRockGeometry();
     case 'obelisk': return M.obeliskGeometry();
     case 'tower': return M.towerGeometry();
     case 'chimney': return M.chimneyGeometry();
@@ -183,7 +188,7 @@ interface Ambient {
   mesh: THREE.InstancedMesh;
   pos: Float32Array;
   vel: Float32Array;
-  kind: 'dust' | 'snow' | 'embers';
+  kind: 'dust' | 'snow' | 'embers' | 'fireflies';
 }
 
 export class World {
@@ -330,6 +335,7 @@ export class World {
         pos.set([rng.range(-16, 16), rng.range(0.3, 9), rng.range(-34, 6)], i * 3);
         if (a.kind === 'snow') vel.set([rng.range(-0.4, 0.4), -rng.range(0.8, 1.6), rng.range(-0.2, 0.2)], i * 3);
         else if (a.kind === 'embers') vel.set([rng.range(-0.5, 0.5), rng.range(0.8, 2.2), rng.range(-0.3, 0.3)], i * 3);
+        else if (a.kind === 'fireflies') vel.set([rng.range(-0.35, 0.35), rng.range(-0.1, 0.12), rng.range(-0.35, 0.35)], i * 3);
         else vel.set([rng.range(1.5, 3.5), rng.range(-0.1, 0.2), rng.range(-0.3, 0.3)], i * 3);
       }
       this.group.add(mesh);
@@ -445,6 +451,7 @@ export class World {
         pos.set([rng.range(-16, 16), rng.range(0.3, 9), rng.range(-34, 6)], i * 3);
         if (a.kind === 'snow') vel.set([rng.range(-0.4, 0.4), -rng.range(0.8, 1.6), rng.range(-0.2, 0.2)], i * 3);
         else if (a.kind === 'embers') vel.set([rng.range(-0.5, 0.5), rng.range(0.8, 2.2), rng.range(-0.3, 0.3)], i * 3);
+        else if (a.kind === 'fireflies') vel.set([rng.range(-0.35, 0.35), rng.range(-0.1, 0.12), rng.range(-0.35, 0.35)], i * 3);
         else vel.set([rng.range(1.5, 3.5), rng.range(-0.1, 0.2), rng.range(-0.3, 0.3)], i * 3);
       }
       this.group.add(mesh);
@@ -519,7 +526,7 @@ export class World {
       if (dz > 22) a.pos[o + 2] -= 44;
       else if (dz < -22) a.pos[o + 2] += 44;
       d.position.set(a.pos[o], a.pos[o + 1], a.pos[o + 2]);
-      const s = a.kind === 'snow' ? 0.09 : a.kind === 'embers' ? 0.07 : 0.06;
+      const s = a.kind === 'snow' ? 0.09 : a.kind === 'embers' ? 0.07 : a.kind === 'fireflies' ? 0.05 + 0.1 * Math.abs(Math.sin(this.time * 2.2 + i * 1.7)) : 0.06; // fireflies blink
       d.scale.setScalar(s);
       d.updateMatrix();
       a.mesh.setMatrixAt(i, d.matrix);

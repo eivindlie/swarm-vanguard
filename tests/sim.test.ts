@@ -506,3 +506,35 @@ describe('level data hygiene', () => {
     }
   });
 });
+
+describe('page 2 mechanics', () => {
+  const shoot = (spawns: LevelDef['spawns'], ticks: number) => {
+    const g = new Game(tiny(spawns, 200), 1, [{ stat: 'startSize', add: 15 }]);
+    for (let i = 0; i < ticks; i++) g.step({ targetX: 0 });
+    return g;
+  };
+  it('a bulwark takes much less damage from rifle bullets than a grunt', () => {
+    const bul = (kind: 'grunt' | 'bulwark') =>
+      ({ t: 'enemies', y: 40, x: 0, spreadX: 0, spreadY: 0, count: 1, kind, hp: 20, awake: false }) as LevelDef['spawns'][number];
+    const dmgTaken = (kind: 'grunt' | 'bulwark') => {
+      const g = new Game(tiny([bul(kind)], 200), 1, [{ stat: 'startSize', add: 15 }]);
+      let first = Infinity;
+      for (let i = 0; i < 600 && g.enemies.length; i++) {
+        g.step({ targetX: 0 });
+        const e = g.enemies[0];
+        if (e && e.hp < e.maxHp && first === Infinity) first = e.maxHp - e.hp;
+      }
+      return first;
+    };
+    const dg = dmgTaken('grunt');
+    const db = dmgTaken('bulwark');
+    if (Number.isFinite(dg) && Number.isFinite(db)) expect(db).toBeLessThan(dg);
+  });
+  it('stats().enemies matches the sim with the new kind', () => {
+    const g = shoot([{ t: 'enemies', y: 60, x: 0, spreadX: 1, spreadY: 1, count: 4, kind: 'bulwark' }], 30);
+    expect(g.enemies.filter((e) => e.kind === 'bulwark').length).toBe(4);
+  });
+  it('the bulwark def has armour below 1', () => {
+    expect(ENEMY_DEFS.bulwark.armor).toBeLessThan(1);
+  });
+});

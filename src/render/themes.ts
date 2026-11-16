@@ -1,6 +1,6 @@
 import type { BossVariant } from './models';
 
-export type DecorKind = 'obelisk' | 'tower' | 'chimney' | 'cactus' | 'rock' | 'snowRock' | 'redRock' | 'mesa' | 'redMesa' | 'iceMesa' | 'arch' | 'pine' | 'crystal' | 'deadTree' | 'lavaSpike' | 'lavaRock';
+export type DecorKind = 'palm' | 'bush' | 'ruinPillar' | 'temple' | 'mossRock' | 'obelisk' | 'tower' | 'chimney' | 'cactus' | 'rock' | 'snowRock' | 'redRock' | 'mesa' | 'redMesa' | 'iceMesa' | 'arch' | 'pine' | 'crystal' | 'deadTree' | 'lavaSpike' | 'lavaRock';
 
 export interface DecorSpec {
   kind: DecorKind;
@@ -11,7 +11,7 @@ export interface DecorSpec {
 }
 
 export interface Theme {
-  id: 'desert' | 'canyon' | 'frost' | 'volcano';
+  id: 'desert' | 'canyon' | 'frost' | 'volcano' | 'jungle';
   name: string;
   boss: BossVariant;
   bossName: string;
@@ -40,7 +40,7 @@ export interface Theme {
   postBody: number;
   postCap: number;
   decor: DecorSpec[];
-  ambient: { kind: 'dust' | 'snow' | 'embers'; color: number; n: number } | null;
+  ambient: { kind: 'dust' | 'snow' | 'embers' | 'fireflies'; color: number; n: number } | null;
 }
 
 export const THEMES: Theme[] = [
@@ -180,6 +180,41 @@ export const THEMES: Theme[] = [
       { kind: 'chimney', n: 9, minX: 7, maxX: 16, scale: [0.9, 1.4] },
     ],
     ambient: { kind: 'embers', color: 0xff9a3a, n: 90 },
+  },
+  {
+    id: 'jungle',
+    name: 'Jungle Ruins',
+    boss: 'idol',
+    bossName: 'STONE IDOL',
+    skyTop: '#2a8f8f',
+    skyMid: '#7fd0a8',
+    skyBottom: '#e8f6c0',
+    fog: 0xc4e2a8,
+    fogNear: 36,
+    fogFar: 88,
+    hemiSky: 0xf2ffe0,
+    hemiGround: 0x4f7a3a,
+    hemiIntensity: 1.7,
+    sun: 0xfff6c8,
+    sunIntensity: 2.2,
+    sunGlow: '#fffbd0',
+    cloud: '#f2ffe8',
+    cloudAlpha: 0.8,
+    groundA: '#7aa84e',
+    groundB: '#689640',
+    laneEdge: '#e2e8a0',
+    outer: '#5c8f3e',
+    wall: 0x8a7e5a,
+    postBody: 0x6a5a3a,
+    postCap: 0xb8c98a,
+    decor: [
+      { kind: 'palm', n: 110, minX: 5.2, maxX: 20, scale: [0.9, 1.7] },
+      { kind: 'bush', n: 140, minX: 4.9, maxX: 18, scale: [0.8, 1.7] },
+      { kind: 'ruinPillar', n: 40, minX: 5.6, maxX: 16, scale: [0.9, 1.5] },
+      { kind: 'mossRock', n: 70, minX: 4.9, maxX: 18, scale: [0.6, 1.8] },
+      { kind: 'temple', n: 9, minX: 12, maxX: 26, scale: [1.2, 2.0] },
+    ],
+    ambient: { kind: 'fireflies', color: 0xe8ff7a, n: 90 },
   },
 ];
 

@@ -143,7 +143,7 @@ export function bruteGeometry(): THREE.BufferGeometry {
   ]);
 }
 
-export type BossVariant = 'golem' | 'ogre' | 'frost' | 'demon';
+export type BossVariant = 'golem' | 'ogre' | 'frost' | 'demon' | 'idol';
 
 /** Four bosses on one animated skeleton, differentiated by palette and silhouette. */
 export function bossGeometry(v: BossVariant): THREE.BufferGeometry {
@@ -152,6 +152,7 @@ export function bossGeometry(v: BossVariant): THREE.BufferGeometry {
     ogre: { skin: 0xb5533c, dark: 0x7a2f22, accent: 0xffee55, trim: 0xf3e6c8 },
     frost: { skin: 0x9fd8ff, dark: 0x5fa3d6, accent: 0xffffff, trim: 0xe6f6ff },
     demon: { skin: 0x3a2330, dark: 0x1d1119, accent: 0xff7a1a, trim: 0xff5a2a },
+    idol: { skin: 0x7f8f6a, dark: 0x4f6240, accent: 0x5af0d0, trim: 0xc7d99a },
   }[v];
   const parts: Part[] = [
     { geo: box(2.1, 1.9, 1.4), color: pal.skin, pos: [0, 2.15, 0] },
@@ -173,6 +174,19 @@ export function bossGeometry(v: BossVariant): THREE.BufferGeometry {
     parts.push({ geo: box(0.55, 0.55, 0.12), color: pal.accent, pos: [0, 2.3, -0.72] }); // rune core
     parts.push({ geo: new THREE.DodecahedronGeometry(0.5, 0), color: pal.dark, pos: [-1.6, 3.5, 0] });
     parts.push({ geo: new THREE.DodecahedronGeometry(0.42, 0), color: pal.dark, pos: [1.6, 3.5, 0.1] });
+  } else if (v === 'idol') {
+    // a mossy stone totem: blocky head with a tall headdress, glowing teal eyes and chest gem, vines hanging off it
+    head.push({ geo: box(1.1, 0.9, 1.0), color: pal.skin, pos: [0, 3.55, -0.05], ...H });
+    for (let i = -2; i <= 2; i++) head.push({ geo: box(0.2, 0.7 + (2 - Math.abs(i)) * 0.35, 0.3), color: i % 2 ? pal.trim : pal.dark, pos: [i * 0.26, 4.25 + (2 - Math.abs(i)) * 0.17, 0], ...H }); // headdress
+    head.push({ geo: sph(0.14), color: pal.accent, pos: [-0.3, 3.62, -0.58], ...H });
+    head.push({ geo: sph(0.14), color: pal.accent, pos: [0.3, 3.62, -0.58], ...H });
+    head.push({ geo: box(0.55, 0.18, 0.12), color: pal.dark, pos: [0, 3.2, -0.55], ...H }); // mouth
+    parts.push({ geo: new THREE.OctahedronGeometry(0.42, 0), color: pal.accent, pos: [0, 2.4, -0.78] }); // chest gem
+    for (const [x, y, z] of [[-0.7, 3.0, -0.72], [0.8, 2.6, -0.72], [-0.2, 1.8, -0.72], [1.6, 2.4, -0.4], [-1.6, 2.0, -0.4]] as const) {
+      parts.push({ geo: box(0.12, 0.9, 0.12), color: 0x3f9a4a, pos: [x, y, z] }); // vines
+    }
+    parts.push({ geo: sph(0.5), color: 0x4a8a3c, pos: [-1.45, 3.1, 0.1] }); // moss on the shoulders
+    parts.push({ geo: sph(0.4), color: 0x4a8a3c, pos: [1.5, 3.2, 0.1] });
   } else if (v === 'ogre') {
     head.push({ geo: sph(0.72), color: pal.skin, pos: [0, 3.5, -0.05], ...H });
     head.push({ geo: cone(0.18, 0.85), color: pal.trim, pos: [-0.5, 4.15, 0], rot: [0, 0, 0.5], ...H });
@@ -629,4 +643,73 @@ export function tileGeometry(gold = false): THREE.BufferGeometry {
       { geo: box(0.1, 0.04, 0.34), color: 0xffffff, pos: [0, 0.12, 0] },
     ]),
   );
+}
+
+
+// ----------------------------------------------------------------------- jungle
+
+export function palmGeometry(): THREE.BufferGeometry {
+  const parts: Part[] = [{ geo: cyl(0.16, 0.26, 3.4, 6), color: 0x8a6a42, pos: [0.2, 1.7, 0], rot: [0, 0, -0.1] }];
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    parts.push({ geo: box(0.32, 0.06, 1.8), color: i % 2 ? 0x2f9a4a : 0x3fb55a, pos: [0.4 + Math.sin(a) * 0.8, 3.45, Math.cos(a) * 0.8], rot: [-0.45, a, 0] });
+  }
+  parts.push({ geo: sph(0.2), color: 0x8a5a2a, pos: [0.4, 3.3, 0.1] });
+  return build(parts);
+}
+
+export function bushGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: new THREE.IcosahedronGeometry(0.7, 0), color: 0x2f8f3f, pos: [0, 0.5, 0], scale: [1.3, 0.8, 1.1] },
+    { geo: new THREE.IcosahedronGeometry(0.5, 0), color: 0x3fae52, pos: [0.6, 0.45, 0.3] },
+    { geo: new THREE.IcosahedronGeometry(0.45, 0), color: 0x267a36, pos: [-0.6, 0.4, -0.2] },
+    { geo: sph(0.1), color: 0xff6a8a, pos: [0.2, 0.95, 0.4] }, // a flower
+  ]);
+}
+
+export function ruinPillarGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: box(1.5, 0.5, 1.5), color: 0x8c9a7a, pos: [0, 0.25, 0] },
+    { geo: cyl(0.55, 0.62, 3.2, 8), color: 0xa7b592, pos: [0, 2.1, 0] },
+    { geo: box(1.3, 0.35, 1.3), color: 0x8c9a7a, pos: [0, 3.9, 0] },
+    { geo: box(0.1, 1.6, 0.1), color: 0x3f9a4a, pos: [0.5, 2.3, -0.55] }, // a vine
+    { geo: sph(0.5), color: 0x4a8a3c, pos: [-0.3, 3.9, 0.3], scale: [1.2, 0.5, 1] },
+  ]);
+}
+
+export function templeGeometry(): THREE.BufferGeometry {
+  const parts: Part[] = [];
+  for (let i = 0; i < 4; i++) parts.push({ geo: box(6 - i * 1.2, 0.9, 6 - i * 1.2), color: i % 2 ? 0x9aa886 : 0xb0bd9a, pos: [0, 0.45 + i * 0.9, 0] });
+  parts.push({ geo: box(1.6, 1.5, 1.6), color: 0x8c9a7a, pos: [0, 4.35, 0] });
+  parts.push({ geo: cone(1.3, 1.1, 4), color: 0x4a8a3c, pos: [0, 5.6, 0], rot: [0, Math.PI / 4, 0] });
+  parts.push({ geo: box(0.9, 1.1, 0.12), color: 0x25382a, pos: [0, 0.6, -3.0] }); // a dark doorway
+  return build(parts);
+}
+
+export function mossRockGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: new THREE.DodecahedronGeometry(0.7, 0), color: 0x7f8a76, pos: [0, 0.3, 0], scale: [1.3, 0.8, 1] },
+    { geo: new THREE.DodecahedronGeometry(0.5, 0), color: 0x4a8a3c, pos: [0, 0.55, 0], scale: [1.2, 0.45, 0.9] },
+  ]);
+}
+
+/** Bulwark: a grunt-sized body behind a huge steel tower shield. Rifles and shotguns barely scratch it. */
+export function bulwarkGeometry(): THREE.BufferGeometry {
+  const steel = 0x8d99ab;
+  const dark = 0x3d4656;
+  const gold = 0xe0a820;
+  return build([
+    { geo: cap(0.2, 0.2), color: 0x6a4a3a, pos: [0, 0.32, 0.1] },
+    { geo: sph(0.17), color: dark, pos: [0, 0.68, 0.06], part: PART.head, pivot: [0, 0.55, 0] },
+    { geo: sph(0.04), color: 0xffee55, pos: [-0.07, 0.7, -0.1], part: PART.head, pivot: [0, 0.55, 0] },
+    { geo: sph(0.04), color: 0xffee55, pos: [0.07, 0.7, -0.1], part: PART.head, pivot: [0, 0.55, 0] },
+    { geo: box(0.1, 0.22, 0.12), color: dark, pos: [-0.09, 0.11, 0.1], part: PART.legL, pivot: [-0.09, 0.22, 0.1] },
+    { geo: box(0.1, 0.22, 0.12), color: dark, pos: [0.09, 0.11, 0.1], part: PART.legR, pivot: [0.09, 0.22, 0.1] },
+    { geo: box(1.0, 1.05, 0.14), color: steel, pos: [0, 0.55, -0.22] }, // the shield
+    { geo: box(1.06, 0.1, 0.18), color: gold, pos: [0, 1.06, -0.22] },
+    { geo: box(1.06, 0.1, 0.18), color: gold, pos: [0, 0.04, -0.22] },
+    { geo: box(0.1, 1.05, 0.18), color: gold, pos: [-0.5, 0.55, -0.22] },
+    { geo: box(0.1, 1.05, 0.18), color: gold, pos: [0.5, 0.55, -0.22] },
+    { geo: new THREE.OctahedronGeometry(0.16, 0), color: 0xff4a2a, pos: [0, 0.58, -0.32] }, // emblem
+  ]);
 }
