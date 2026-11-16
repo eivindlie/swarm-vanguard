@@ -48,3 +48,16 @@ test('perf proxy: draw calls stay under budget with 300+ enemies', async ({ page
   expect(st.drawCalls).toBeLessThan(60);
   await page.screenshot({ path: 'screenshots/stress.png' });
 });
+
+test('a bot can clear level 1: win screen, stars and persistent save', async ({ page }) => {
+  await page.goto('/?level=1&seed=1&autoplay=balanced&autostart=1&speed=8');
+  await page.waitForFunction(() => (window as any).__game);
+  await expect(page.locator('#end')).toHaveClass(/show/, { timeout: 50_000 });
+  await expect(page.locator('#endTitle')).toHaveText('VICTORY!');
+  const save = await page.evaluate(() => JSON.parse(localStorage.getItem('squadrush.save')!));
+  expect(save.version).toBe(1);
+  expect(save.unlockedLevel).toBe(2);
+  expect(save.coins).toBeGreaterThan(0);
+  expect(save.stars['1']).toBeGreaterThanOrEqual(1);
+  await page.screenshot({ path: 'screenshots/e2e-win.png' });
+});
