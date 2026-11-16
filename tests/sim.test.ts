@@ -42,13 +42,12 @@ describe('game rules', () => {
     expect(g.bullets.length).toBeGreaterThan(0);
   });
   it('takes the right gate when steering right', () => {
-    const g = new Game(level01, 1);
-    let sawGate = false;
-    while (g.phase === 'playing' && g.tick < 3000) {
-      g.step({ targetX: 2 });
-      if (g.events.some((e) => e.t === 'gate')) { sawGate = true; break; }
-    }
-    expect(sawGate).toBe(true);
+    const g = new Game(
+      { id: 98, name: 'g', length: 60, coins: 1, spawns: [{ t: 'gates', y: 20, left: { op: 'sub', value: 3 }, right: { op: 'add', value: 5 } }] },
+      1,
+    );
+    for (let i = 0; i < 600 && g.phase === 'playing'; i++) g.step({ targetX: 2 });
+    expect(g.squad.count).toBe(10);
   });
   it('ends the game (win or lose) within the time limit', () => {
     const g = run(3, () => 0);
@@ -103,5 +102,93 @@ describe('squad cap and meta', () => {
   });
   it('load falls back to a fresh save without storage', () => {
     expect(loadSave().unlockedLevel).toBe(1);
+  });
+});
+
+import { halfWidth, slot } from '../src/sim/formation';
+import { ENEMY_DEFS } from '../src/sim/game';
+
+const withSquad = (spawns: LevelDef['spawns'], count: number) =>
+  new Game(tiny(spawns, 200), 1, [{ stat: 'startSize', add: count - 5 }]);
+const grunt = (x: number, y = 30, n = 1) =>
+  ({ t: 'enemies', y, x, spreadX: 0, spreadY: 0, count: n, kind: 'grunt' }) as LevelDef['spawns'][number];
+
+describe('shots cover the squad width', () => {
+  for (const count of [5, 12, 40, 150]) {
+    it(`no enemy within the squad's width survives to reach it (${count} soldiers)`, () => {
+      const hw = halfWidth(count);
+      for (let x = -hw; x <= hw; x += 0.15) {
+        const g = withSquad([grunt(x)], count);
+        let hits = 0;
+        for (let i = 0; i < 900 && g.phase === 'playing'; i++) {
+          g.step({ targetX: 0 });
+          hits += g.events.filter((e) => e.t === 'squadHit').length;
+          if (g.enemies.length === 0) break;
+        }
+        expect(g.enemies.length, `x=${x.toFixed(2)}`).toBe(0);
+        expect(hits, `reached the squad at x=${x.toFixed(2)}`).toBe(0);
+      }
+    });
+  }
+  it('the formation never leaves the lane', () => {
+    for (const n of [1, 5, 40, 120, 300]) {
+      expect(halfWidth(n)).toBeLessThanOrEqual(3.4 + 1e-9);
+      for (let i = 0; i < n; i++) expect(Math.abs(slot(i, n).dx)).toBeLessThanOrEqual(3.2 + 1e-9);
+    }
+  });
+});
+
+describe('arcade enemy movement', () => {
+  it('enemies walk straight: x never changes', () => {
+    const g = withSquad([grunt(3, 20)], 5);
+    const e0 = g.enemies[0];
+    const x0 = e0.x;
+    for (let i = 0; i < 120; i++) g.step({ targetX: -2 });
+    expect(e0.x).toBe(x0);
+    expect(e0.y).toBeLessThan(20);
+  });
+  it('an enemy that slips past the squad costs lives at the bottom', () => {
+    const g = withSquad([grunt(3.4, 12)], 5);
+    let leaked = false;
+    for (let i = 0; i < 600 && g.phase === 'playing'; i++) {
+      g.step({ targetX: -2 });
+      if (g.events.some((e) => e.t === 'leak')) leaked = true;
+    }
+    expect(leaked).toBe(true);
+    expect(g.squad.count).toBe(4);
+  });
+  it('a boss that gets past the squad is a defeat', () => {
+    const g = withSquad([{ t: 'enemies', y: 20, x: 3, spreadX: 0, spreadY: 0, count: 1, kind: 'boss', hp: 99999 }], 5);
+    for (let i = 0; i < 1500 && g.phase === 'playing'; i++) g.step({ targetX: -3 });
+    expect(g.phase).toBe('lost');
+  });
+});
+
+describe('weapon types', () => {
+  it('a weapon block switches the weapon', () => {
+    const g = withSquad([{ t: 'block', y: 10, x: 0, w: 3, hp: 2, reward: { kind: 'weaponType', weapon: 'laser', label: 'LASER' } }], 5);
+    for (let i = 0; i < 300 && g.weapon === 'rifle'; i++) g.step({ targetX: 0 });
+    expect(g.weapon).toBe('laser');
+  });
+  it('rockets explode and hurt neighbours', () => {
+    const g = withSquad([{ t: 'enemies', y: 25, x: 0, spreadX: 0.5, spreadY: 0.5, count: 8, kind: 'grunt' }], 12);
+    g.weapon = 'rocket';
+    let explosions = 0;
+    for (let i = 0; i < 900 && g.enemies.length; i++) {
+      g.step({ targetX: 0 });
+      explosions += g.events.filter((e) => e.t === 'explosion').length;
+    }
+    expect(explosions).toBeGreaterThan(0);
+    expect(g.enemies.length).toBe(0);
+  });
+  it('a piercing bullet passes through an enemy and hits it only once', () => {
+    const g = withSquad([grunt(3.2, 20)], 5);
+    const e = g.enemies[0];
+    e.hp = e.maxHp = 100;
+    e.awake = true;
+    g.bullets.push({ id: 9999, x: 3.2, y: e.y - 1, vx: 0, vy: 42, dmg: 1, pierce: 3, born: 0, maxAge: 120, kind: 'laser', splash: 0, hit: [] });
+    for (let i = 0; i < 20; i++) g.step({ targetX: -3 });
+    expect(e.hp).toBeCloseTo(99, 5);
+    expect(ENEMY_DEFS.grunt.hp).toBeGreaterThan(0);
   });
 });

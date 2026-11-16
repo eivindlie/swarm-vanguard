@@ -17,6 +17,12 @@ npm run build      # static build in dist/ (relative base: works on GitHub Pages
 ```
 Controls: drag (touch/mouse) or ←/→ / A/D.
 
+Rules worth knowing: enemies walk straight down the lane (no homing). Any enemy that reaches the squad,
+or slips past it to the bottom of the screen, costs lives. Volleys span the squad's full width, so
+nothing in front of you is missed. Weapon pickups (blocks): SHOTGUN (close, wide), ROCKETS (splash,
+best vs wide hordes), LASER (piercing, best vs columns/tanks), plus stat upgrades (DMG, FAST, PIERCE, SPREAD).
+`npx tsx tools/weapons.ts` compares the weapon types in a fixed arena.
+
 Debug URL params: `?level=3&seed=42&speed=4&autostart=1`. `window.__game` exposes
 `getState()`, `step(n)`, `setInput(x)`, `stats()`, `restart()`, `stress(n)`.
 

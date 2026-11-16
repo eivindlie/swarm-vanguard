@@ -5,8 +5,11 @@ export interface GateSide {
 }
 export type EnemyKind = 'grunt' | 'runner' | 'brute' | 'boss';
 
+export type WeaponType = 'rifle' | 'shotgun' | 'rocket' | 'laser';
+
 export type BlockReward =
   | { kind: 'soldiers'; n: number }
+  | { kind: 'weaponType'; weapon: WeaponType; label: string }
   | { kind: 'weapon'; stat: 'damage' | 'fireInterval' | 'pierce' | 'spread'; add?: number; mul?: number; label: string };
 
 export type Spawn =

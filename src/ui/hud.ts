@@ -1,4 +1,4 @@
-import type { Game } from '../sim/game';
+import { WEAPONS, type Game } from '../sim/game';
 import type { GameRenderer } from '../render/renderer';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -8,6 +8,8 @@ export class Hud {
   private bar = $('bar').querySelector('i') as HTMLElement;
   private lvl = $('lvl');
   private hud = $('hud');
+  private weapon = $('weapon');
+  private weaponShown = '';
   private boss = $('boss');
   private bossBar = $('boss').querySelector('i') as HTMLElement;
   private bossHp = $('bossHp');
@@ -45,6 +47,11 @@ export class Hud {
 
   update(game: Game, r: GameRenderer) {
     this.count.textContent = String(game.squad.count);
+    const wname = WEAPONS[game.weapon].name;
+    if (wname !== this.weaponShown) {
+      this.weaponShown = wname;
+      this.weapon.textContent = wname;
+    }
     const p = r.project(game.squad.x, game.squad.y, 1.3);
     this.count.style.left = `${p.x}px`;
     this.count.style.top = `${p.y - 14}px`;

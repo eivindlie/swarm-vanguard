@@ -114,6 +114,8 @@ function handleEvents() {
         break;
       }
       case 'squadHit': renderer.addShake(0.05); sfx.squadHit(); break;
+      case 'leak': sfx.squadHit(); break;
+      case 'explosion': sfx.blockBreak(); break;
       case 'win': sfx.win(); break;
       case 'lose': sfx.lose(); break;
     }

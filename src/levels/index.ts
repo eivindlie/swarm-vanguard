@@ -1,7 +1,7 @@
 import type { LevelDef } from '../sim/level';
 import { Rng } from '../sim/rng';
 import tuned from './tuned.json';
-import { LevelBuilder, add, mul, sub, div, soldiers, dmgUp, rateUp, pierceUp, spreadUp } from './builder';
+import { LevelBuilder, add, mul, sub, div, soldiers, dmgUp, rateUp, pierceUp, spreadUp, shotgun, rocket, laser } from './builder';
 
 // --- Hand-built intro levels: teach gates, shoot-blocks, counting blocks, brutes. ---
 type Overrides = Record<number, number>;
@@ -12,15 +12,18 @@ function makeHand(K: (id: number) => number): LevelDef[] {
     .gates(sub(4), add(8)).horde(36).block(2, 30, dmgUp).counter(-2.2, 4, 1, 40, 14).horde(50, 'grunt', { after: 22 })
     .build(1, 'First Steps', 150, 20);
 
+  // Hordes right after a shoot-block sit on the OPPOSITE side, so grabbing the reward costs some leakage
+  // rather than getting the squad pinned against the block.
   const l2 = new LevelBuilder(K(2))
-    .horde(14).gates(add(3), mul(2)).block(-2, 22, soldiers(10)).horde(28)
-    .gates(add(6), div(2)).horde(20, 'runner').horde(34).counter(2.2, 5, 1, 45, 14).horde(48, 'grunt', { after: 20 })
+    .gates(add(4), add(6)).horde(10, 'grunt', { x: 1.7 }).block(-2, 22, soldiers(10)).horde(14, 'grunt', { x: 1.7 })
+    .block(2, 24, shotgun).horde(18, 'grunt', { x: -1.7 })
+    .gates(add(6), div(2)).horde(12, 'runner', { x: 1.7 }).horde(22, 'grunt', { x: -1.7 }).counter(2.2, 5, 1, 45, 14).horde(30, 'grunt', { x: -1.7, after: 20 })
     .build(2, 'Dust Road', 320, 25);
 
   const l3 = new LevelBuilder(K(3))
-    .horde(18).gates(mul(2), add(10)).block(2, 26, rateUp).horde(30).horde(2, 'brute', { after: 16 })
-    .gates(sub(6), mul(2)).block(-2, 36, soldiers(16)).horde(46).counter(-2.2, 6, 1, 50, 14)
-    .horde(30, 'runner').horde(3, 'brute', { after: 14 }).horde(60, 'grunt', { after: 20 })
+    .gates(mul(2), add(10)).horde(12, 'grunt', { x: -1.7 }).block(2, 26, rocket).horde(20, 'grunt', { x: -1.7 }).horde(2, 'brute', { x: 1.5, after: 16 })
+    .gates(sub(6), mul(2)).block(-2, 36, soldiers(16)).horde(30, 'grunt', { x: 1.7 }).counter(-2.2, 6, 1, 50, 14)
+    .horde(20, 'runner', { x: 1.7 }).horde(3, 'brute', { x: -1.5, after: 14 }).horde(40, 'grunt', { x: 1.7, after: 20 })
     .build(3, 'Cactus Pass', 520, 30);
 
   return [l1, l2, l3];
@@ -32,7 +35,7 @@ function generated(id: number, K: (id: number) => number): LevelDef {
   const b = new LevelBuilder(K(id));
   const waves = 4 + Math.floor(id / 3);
   const scale = Math.pow(1.13, id);
-  const weapons = [dmgUp, rateUp, pierceUp, spreadUp];
+  const weapons = [dmgUp, rateUp, pierceUp, spreadUp, shotgun, rocket, laser];
   // a free opening gate: the squad gets its first growth before the first horde arrives
   b.gates(add(4 + id), add(4 + id), 12);
   for (let w = 0; w < waves; w++) {
@@ -41,9 +44,9 @@ function generated(id: number, K: (id: number) => number): LevelDef {
     const n = Math.round(10 * scale * prog);
     const rewardX = rng.next() < 0.5 ? -2 : 2;
     // the horde lingers on the side AWAY from the reward: grabbing it costs you leakage
-    b.horde(n, 'grunt', { x: -rewardX * 0.55, w: 2.4 });
-    if (id >= 5 && w % 2 === 1) b.horde(Math.round(n * 0.35), 'runner', { x: -rewardX * 0.5, w: 2.4, after: 8 });
-    if (id >= 4 && w % 3 === 2) b.horde(Math.max(2, Math.round(id / 2)), 'brute', { x: -rewardX * 0.5, w: 2, after: 11 });
+    b.horde(n, 'grunt', { x: -rewardX * 0.9, w: 1.7 });
+    if (id >= 5 && w % 2 === 1) b.horde(Math.round(n * 0.35), 'runner', { x: -rewardX * 0.9, w: 1.7, after: 8 });
+    if (id >= 4 && w % 3 === 2) b.horde(Math.max(2, Math.round(id / 2)), 'brute', { x: -rewardX * 0.9, w: 1.6, after: 11 });
     // a gate pair: one decent side, one trap
     const side = rng.next() < 0.5;
     const good = rng.next() < 0.3 ? mul(2) : add(4 + id);

@@ -1,14 +1,33 @@
 import { Rng } from './rng';
 import { computeStat, type Modifier } from './stats';
-import type { BlockReward, EnemyKind, GateSide, LevelDef } from './level';
+import type { BlockReward, EnemyKind, GateSide, LevelDef, WeaponType } from './level';
+import { halfDepth, halfWidth } from './formation';
 
 export const DT = 1 / 60;
 export const LANE_HALF = 4; // lane spans x in [-4, 4]
 export const FORWARD_SPEED = 4;
 export const LATERAL_SPEED = 9;
 export const ACTIVATE_DIST = 32; // enemies wake up when this close
-export const MAX_SHOTS = 16;
-export const BULLET_RANGE = 22;
+export const BULLET_SPACING = 0.4; // max gap between bullets across the squad: no unhittable gaps
+export const BULLET_HALF_WIDTH = 0.2;
+
+export interface WeaponDef {
+  name: string;
+  dmgMul: number; // TOTAL volley damage multiplier (spread over all bullets)
+  intervalMul: number;
+  speed: number;
+  pierce: number; // extra pierce on top of the pierce stat
+  cone: number; // total cone angle in radians (0 = straight)
+  pelletMul: number; // bullets per volley relative to the width-based count
+  range: number;
+  splash: number; // explosion radius (0 = none)
+}
+export const WEAPONS: Record<WeaponType, WeaponDef> = {
+  rifle: { name: 'RIFLE', dmgMul: 1, intervalMul: 1, speed: 22, pierce: 0, cone: 0, pelletMul: 1, range: 22, splash: 0 },
+  shotgun: { name: 'SHOTGUN', dmgMul: 1.3, intervalMul: 0.9, speed: 20, pierce: 0, cone: 0.8, pelletMul: 3, range: 14, splash: 0 },
+  rocket: { name: 'ROCKET', dmgMul: 1.75, intervalMul: 1.7, speed: 13, pierce: 0, cone: 0, pelletMul: 0.5, range: 24, splash: 1.8 },
+  laser: { name: 'LASER', dmgMul: 0.8, intervalMul: 0.6, speed: 42, pierce: 5, cone: 0, pelletMul: 1, range: 30, splash: 0 },
+};
 export const MAX_SQUAD = 300; // hard cap: keeps rendering/balance sane
 
 export interface EnemyDef {
@@ -39,9 +58,14 @@ export interface Bullet {
   x: number;
   y: number;
   vx: number;
+  vy: number;
   dmg: number;
   pierce: number;
   born: number;
+  maxAge: number; // ticks
+  kind: WeaponType;
+  splash: number;
+  hit: number[]; // ids already hit (so piercing bullets pass through each enemy once)
 }
 export interface Block {
   id: number;
@@ -81,6 +105,9 @@ export type GameEvent =
   | { t: 'blockBreak'; x: number; y: number; label: string }
   | { t: 'gate'; x: number; y: number; delta: number; label: string }
   | { t: 'squadHit'; lost: number }
+  | { t: 'leak'; x: number; y: number }
+  | { t: 'explosion'; x: number; y: number; r: number }
+  | { t: 'weapon'; weapon: WeaponType }
   | { t: 'win' }
   | { t: 'lose' };
 
@@ -122,12 +149,14 @@ export class Game {
   counters: Counter[] = [];
   events: GameEvent[] = [];
   kills = 0;
+  weapon: WeaponType = 'rifle';
   private fireCd = 0;
   private grindAcc = 0;
   private nextId = 1;
   private spawnIdx = 0;
   private pendingSpawns: LevelDef['spawns'];
   private grid = new Map<number, Enemy[]>();
+  private bosses: Enemy[] = [];
 
   constructor(level: LevelDef, seed = 1, mods: Modifier[] = []) {
     this.level = level;
@@ -150,8 +179,12 @@ export class Game {
     return computeStat(k, this.mods);
   }
 
-  squadRadius(): number {
-    return Math.min(2.3, 0.4 + 0.2 * Math.sqrt(this.squad.count));
+  halfWidth(): number {
+    return halfWidth(this.squad.count);
+  }
+
+  halfDepth(): number {
+    return halfDepth(this.squad.count);
   }
 
   private streamSpawns(): void {
@@ -196,7 +229,12 @@ export class Game {
 
   private buildGrid(): void {
     this.grid.clear();
+    this.bosses.length = 0;
     for (const e of this.enemies) {
+      if (e.kind === 'boss') {
+        this.bosses.push(e);
+        continue;
+      }
       const k = cellKey(e.x, e.y);
       const arr = this.grid.get(k);
       if (arr) arr.push(e);
@@ -211,7 +249,7 @@ export class Game {
     const sq = this.squad;
 
     // --- squad lateral movement (clamped to lane) ---
-    const maxX = LANE_HALF - this.squadRadius() * 0.6;
+    const maxX = Math.max(2.2, LANE_HALF - this.halfWidth() * 0.7);
     const tx = clamp(input.targetX, -maxX, maxX);
     const dx = tx - sq.x;
     sq.x += clamp(dx, -LATERAL_SPEED * DT, LATERAL_SPEED * DT);
@@ -219,7 +257,7 @@ export class Game {
 
     // --- forward movement, blocked by intact blocks directly ahead ---
     let blocked = false;
-    const rr = this.squadRadius() * 0.6;
+    const rr = this.halfWidth() * 0.6;
     for (const b of this.blocks) {
       const ahead = b.y - sq.y;
       if (ahead > -0.2 && ahead < 1.2 && Math.abs(b.x - sq.x) < b.w / 2 + rr) {
@@ -237,7 +275,7 @@ export class Game {
     this.fireCd -= DT;
     if (this.fireCd <= 0 && sq.count > 0) {
       this.fire();
-      this.fireCd += this.stat('fireInterval');
+      this.fireCd += this.stat('fireInterval') * WEAPONS[this.weapon].intervalMul;
     }
 
     this.moveBullets();
@@ -262,31 +300,44 @@ export class Game {
 
   private fire(): void {
     const sq = this.squad;
-    const shots = Math.min(sq.count, MAX_SHOTS);
-    const dmg = (this.stat('damage') * sq.count) / shots;
-    const pierce = Math.max(1, Math.round(this.stat('pierce')));
-    const spread = this.stat('spread');
-    const speed = this.stat('bulletSpeed');
-    const width = Math.min(this.squadRadius() * 1.6, 3.2);
+    const w = WEAPONS[this.weapon];
+    const hw = this.halfWidth();
+    const hd = this.halfDepth();
+    // enough bullets that the gap between neighbours is <= BULLET_SPACING across the WHOLE squad width
+    const base = Math.min(sq.count, Math.max(1, Math.ceil((2 * hw) / BULLET_SPACING)));
+    const shots = Math.max(1, Math.round(base * w.pelletMul));
+    const dmg = (this.stat('damage') * sq.count * w.dmgMul) / shots;
+    const pierce = Math.max(1, Math.round(this.stat('pierce'))) + w.pierce;
+    const extraSpread = this.stat('spread');
+    const speed = w.speed;
     for (let i = 0; i < shots; i++) {
-      const f = shots === 1 ? 0 : i / (shots - 1) - 0.5;
+      const f = shots === 1 ? 0 : i / (shots - 1) - 0.5; // -0.5 .. 0.5 across the squad
+      const dx = f * 2 * (hw - 0.2);
+      // fire from the front edge of the crowd at that column
+      const edge = hd * 0.55 * Math.sqrt(Math.max(0, 1 - (dx / hw) * (dx / hw)));
+      let ang = f * extraSpread * 2;
+      if (w.cone > 0) ang += (this.rng.next() - 0.5) * w.cone;
       this.bullets.push({
         id: this.nextId++,
-        x: sq.x + f * width,
-        y: sq.y + 0.5,
-        vx: f * spread * speed,
+        x: sq.x + dx,
+        y: sq.y + 0.4 + edge,
+        vx: Math.sin(ang) * speed,
+        vy: Math.cos(ang) * speed,
         dmg,
         pierce,
         born: this.tick,
+        maxAge: Math.ceil(w.range / speed / DT),
+        kind: this.weapon,
+        splash: w.splash,
+        hit: [],
       });
     }
     this.events.push({ t: 'shot', n: shots });
   }
 
   private moveBullets(): void {
-    const speed = this.stat('bulletSpeed');
     for (const b of this.bullets) {
-      b.y += speed * DT;
+      b.y += b.vy * DT;
       b.x += b.vx * DT;
     }
   }
@@ -299,19 +350,77 @@ export class Game {
         if (e.y - sq.y < ACTIVATE_DIST) e.awake = true;
         else continue;
       }
-      // advance toward the squad, drift sideways toward its x
+      // arcade rule: enemies walk straight down the lane, no homing
       e.y -= def.speed * DT;
-      const drift = clamp(sq.x - e.x, -1, 1) * def.speed * 0.35 * DT;
-      e.x += drift;
       e.wobble += DT * 8;
     }
   }
 
+  /** First live enemy overlapping the bullet that it has not already hit. */
+  private enemyAt(b: Bullet): Enemy | null {
+    const cx = Math.floor(b.x + 8);
+    const cy = Math.floor(b.y);
+    for (let gx = cx - 1; gx <= cx + 1; gx++) {
+      for (let gy = cy - 1; gy <= cy + 1; gy++) {
+        const arr = this.grid.get(gx * 100000 + gy);
+        if (!arr) continue;
+        for (const e of arr) {
+          if (e.hp <= 0 || b.hit.includes(e.id)) continue;
+          const r = ENEMY_DEFS[e.kind].radius + BULLET_HALF_WIDTH;
+          const ddx = e.x - b.x;
+          const ddy = e.y - b.y;
+          if (ddx * ddx + ddy * ddy < r * r) return e;
+        }
+      }
+    }
+    for (const e of this.bosses) {
+      if (e.hp <= 0 || b.hit.includes(e.id)) continue;
+      const r = ENEMY_DEFS.boss.radius + BULLET_HALF_WIDTH;
+      const ddx = e.x - b.x;
+      const ddy = e.y - b.y;
+      if (ddx * ddx + ddy * ddy < r * r) return e;
+    }
+    return null;
+  }
+
+  private damageEnemy(e: Enemy, dmg: number): void {
+    e.hp -= dmg;
+    this.events.push({ t: 'hit', x: e.x, y: e.y });
+    if (e.hp <= 0) {
+      this.kills++;
+      this.events.push({ t: 'kill', x: e.x, y: e.y, kind: e.kind });
+    }
+  }
+
+  private explode(x: number, y: number, r: number, dmg: number, skip: Enemy): void {
+    this.events.push({ t: 'explosion', x, y, r });
+    const reach = Math.ceil(r) + 1;
+    const cx = Math.floor(x + 8);
+    const cy = Math.floor(y);
+    for (let gx = cx - reach; gx <= cx + reach; gx++) {
+      for (let gy = cy - reach; gy <= cy + reach; gy++) {
+        const arr = this.grid.get(gx * 100000 + gy);
+        if (!arr) continue;
+        for (const e of arr) {
+          if (e.hp <= 0 || e === skip) continue;
+          const rr = r + ENEMY_DEFS[e.kind].radius;
+          const ddx = e.x - x;
+          const ddy = e.y - y;
+          if (ddx * ddx + ddy * ddy < rr * rr) this.damageEnemy(e, dmg);
+        }
+      }
+    }
+    for (const e of this.bosses) {
+      if (e.hp <= 0 || e === skip) continue;
+      const rr = r + ENEMY_DEFS.boss.radius;
+      if ((e.x - x) ** 2 + (e.y - y) ** 2 < rr * rr) this.damageEnemy(e, dmg);
+    }
+  }
+
   private bulletCollisions(): void {
-    const range = BULLET_RANGE / this.stat('bulletSpeed') / DT;
     for (const b of this.bullets) {
       if (b.pierce <= 0) continue;
-      if (this.tick - b.born > range) {
+      if (this.tick - b.born > b.maxAge || b.x < -LANE_HALF - 2 || b.x > LANE_HALF + 2) {
         b.pierce = 0;
         continue;
       }
@@ -341,29 +450,15 @@ export class Game {
         }
       }
       if (hitCounter) continue;
-      // enemies via spatial grid
-      const cx = Math.floor(b.x + 8);
-      const cy = Math.floor(b.y);
-      outer: for (let gx = cx - 1; gx <= cx + 1; gx++) {
-        for (let gy = cy - 1; gy <= cy + 1; gy++) {
-          const arr = this.grid.get(gx * 100000 + gy);
-          if (!arr) continue;
-          for (const e of arr) {
-            if (e.hp <= 0) continue;
-            const r = ENEMY_DEFS[e.kind].radius + 0.12;
-            const ddx = e.x - b.x;
-            const ddy = e.y - b.y;
-            if (ddx * ddx + ddy * ddy < r * r) {
-              e.hp -= b.dmg;
-              b.pierce--;
-              this.events.push({ t: 'hit', x: e.x, y: e.y });
-              if (e.hp <= 0) {
-                this.kills++;
-                this.events.push({ t: 'kill', x: e.x, y: e.y, kind: e.kind });
-              }
-              if (b.pierce <= 0) break outer;
-            }
-          }
+      // enemies: a bullet may hit several in one tick if it pierces
+      let e: Enemy | null;
+      while (b.pierce > 0 && (e = this.enemyAt(b))) {
+        b.hit.push(e.id);
+        b.pierce--;
+        this.damageEnemy(e, b.dmg);
+        if (b.splash > 0) {
+          this.explode(b.x, b.y, b.splash, b.dmg * 0.7, e);
+          b.pierce = 0; // rockets detonate on the first target
         }
       }
     }
@@ -375,6 +470,10 @@ export class Game {
       this.squad.count = Math.min(MAX_SQUAD, this.squad.count + r.n);
       this.squad.maxCount = Math.max(this.squad.maxCount, this.squad.count);
       this.events.push({ t: 'blockBreak', x: bl.x, y: bl.y, label: `+${r.n}` });
+    } else if (r.kind === 'weaponType') {
+      this.weapon = r.weapon;
+      this.events.push({ t: 'weapon', weapon: r.weapon });
+      this.events.push({ t: 'blockBreak', x: bl.x, y: bl.y, label: r.label });
     } else {
       this.mods.push({ stat: r.stat, add: r.add, mul: r.mul, source: 'block' });
       this.events.push({ t: 'blockBreak', x: bl.x, y: bl.y, label: r.label });
@@ -383,14 +482,17 @@ export class Game {
 
   private contacts(): void {
     const sq = this.squad;
-    const r = this.squadRadius();
+    const hw = this.halfWidth();
+    const hd = this.halfDepth();
     for (const e of this.enemies) {
       if (e.hp <= 0) continue;
       const def = ENEMY_DEFS[e.kind];
       const dx = e.x - sq.x;
       const dy = e.y - sq.y;
-      const rr = r + def.radius;
-      if (dx * dx + dy * dy < rr * rr) {
+      const ax = hw + def.radius * 0.6;
+      const ay = hd + def.radius * 0.6;
+      const inside = (dx / ax) * (dx / ax) + (dy / ay) * (dy / ay) < 1;
+      if (inside) {
         if (e.kind === 'boss') {
           // boss grinds the squad down continuously while in contact
           this.grindAcc += def.contactDmg * DT;
@@ -405,6 +507,17 @@ export class Game {
           e.hp = 0;
           this.kills++;
           this.events.push({ t: 'kill', x: e.x, y: e.y, kind: e.kind });
+          this.events.push({ t: 'squadHit', lost: def.contactDmg });
+        }
+      } else if (e.y < sq.y - hd - 1.2) {
+        // slipped past the squad: it reaches the bottom of the screen and costs lives
+        this.events.push({ t: 'leak', x: e.x, y: sq.y - hd - 1.2 });
+        if (e.kind === 'boss') {
+          this.events.push({ t: 'squadHit', lost: sq.count });
+          sq.count = 0;
+        } else {
+          sq.count -= def.contactDmg;
+          e.hp = 0;
           this.events.push({ t: 'squadHit', lost: def.contactDmg });
         }
       }
@@ -427,7 +540,7 @@ export class Game {
 
   private counterChecks(): void {
     const sq = this.squad;
-    const rr = this.squadRadius() * 0.6;
+    const rr = this.halfWidth() * 0.6;
     for (const c of this.counters) {
       if (c.value <= 0 || sq.y < c.y) continue;
       if (Math.abs(sq.x - c.x) <= c.w / 2 + rr) {
@@ -442,7 +555,7 @@ export class Game {
 
   private cleanup(): void {
     const sq = this.squad;
-    this.enemies = this.enemies.filter((e) => e.hp > 0 && e.y > sq.y - 3);
+    this.enemies = this.enemies.filter((e) => e.hp > 0 && e.y > sq.y - 14);
     this.bullets = this.bullets.filter((b) => b.pierce > 0);
     this.blocks = this.blocks.filter((b) => b.hp > 0 && b.y > sq.y - 3);
     this.gates = this.gates.filter((g) => g.y > sq.y - 3);

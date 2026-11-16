@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { Game, LANE_HALF, gateLabel, type Block, type Counter, type Gate } from '../sim/game';
-import type { EnemyKind } from '../sim/level';
+import type { EnemyKind, WeaponType } from '../sim/level';
 import { Rng } from '../sim/rng';
+import { slot } from '../sim/formation';
 import { Particles } from './fx';
 import { soldierGeometry, gruntGeometry, runnerGeometry, bruteGeometry, bossGeometry, cactusGeometry, rockGeometry, mesaGeometry } from './models';
 
@@ -10,6 +11,13 @@ const MAX_ENEMIES = 700;
 const MAX_BULLETS = 400;
 
 type Inst = THREE.InstancedMesh;
+
+const BULLET_STYLE: Record<WeaponType, { color: number; s: [number, number, number] }> = {
+  rifle: { color: 0xffd23a, s: [1, 1, 1] },
+  shotgun: { color: 0xffffff, s: [0.9, 0.9, 0.45] },
+  rocket: { color: 0xff7a1a, s: [3, 3, 1.5] },
+  laser: { color: 0x59f0ff, s: [0.8, 0.8, 3] },
+};
 
 const labelCache = new Map<string, THREE.CanvasTexture>();
 
@@ -85,6 +93,7 @@ export class GameRenderer {
   readonly fx: Particles;
   private shadows!: Inst;
   private shadowN = 0;
+  private tmpColor = new THREE.Color();
 
   constructor(private host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -118,7 +127,7 @@ export class GameRenderer {
     shadowGeo.rotateX(-Math.PI / 2);
     this.shadows = this.makeInst(shadowGeo, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false }), MAX_SOLDIERS + MAX_ENEMIES + 80);
     this.fx = new Particles(this.scene);
-    this.bullets = this.makeInst(new THREE.BoxGeometry(0.07, 0.07, 0.55), new THREE.MeshBasicMaterial({ color: 0xffd23a }), MAX_BULLETS);
+    this.bullets = this.makeInst(new THREE.BoxGeometry(0.07, 0.07, 0.55), new THREE.MeshBasicMaterial({ color: 0xffffff }), MAX_BULLETS);
 
     this.resize();
     new ResizeObserver(() => this.resize()).observe(host);
@@ -219,6 +228,15 @@ export class GameRenderer {
         case 'gate':
           this.fx.burst(sq.x, sq.y, 0.6, 18, e.delta >= 0 ? 0x6fb4ff : 0xff6a6a, 4, 0.14, 0.7, 4);
           break;
+        case 'explosion':
+          this.fx.burst(e.x, e.y, 0.6, 22, 0xff9a2a, 5, 0.2, 0.5, 3);
+          this.fx.burst(e.x, e.y, 0.6, 10, 0xffe27a, 3, 0.14, 0.4, 3);
+          this.addShake(0.15);
+          break;
+        case 'leak':
+          this.fx.burst(e.x, e.y, 0.5, 14, 0xff3030, 4, 0.18, 0.6, 3);
+          this.addShake(0.25);
+          break;
         case 'squadHit':
           this.fx.burst(sq.x, sq.y, 0.5, Math.min(8, e.lost + 2), 0x7fb0ff, 2.5, 0.12, 0.45, 2.5);
           break;
@@ -275,16 +293,14 @@ export class GameRenderer {
   private drawSquad(game: Game) {
     const sq = game.squad;
     const n = Math.min(sq.count, MAX_SOLDIERS);
-    // dense formation: spacing shrinks a little as the crowd grows
-    const spacing = n > 120 ? 0.3 : 0.38;
     const d = this.dummy;
     for (let i = 0; i < n; i++) {
-      const r = spacing * Math.sqrt(i + 0.5);
-      const a = i * 2.39996;
+      // same formation the simulation uses for bullets and collisions
+      const s = slot(i, sq.count);
       const ph = this.time * 12 + i * 1.7;
       const bob = Math.abs(Math.sin(ph)) * 0.08;
-      const px = sq.x + Math.cos(a) * r;
-      const pz = -(sq.y + Math.sin(a) * r * 0.9);
+      const px = sq.x + s.dx;
+      const pz = -(sq.y + s.dy);
       d.position.set(px, bob, pz);
       d.rotation.set(-0.12, 0, Math.sin(ph) * 0.1);
       d.scale.setScalar(1);
@@ -340,12 +356,15 @@ export class GameRenderer {
     const n = Math.min(game.bullets.length, MAX_BULLETS);
     for (let i = 0; i < n; i++) {
       const b = game.bullets[i];
+      const st = BULLET_STYLE[b.kind];
       d.position.set(b.x, 0.7, -b.y);
-      d.rotation.set(0, 0, 0);
-      d.scale.setScalar(1);
+      d.rotation.set(0, -Math.atan2(b.vx, b.vy), 0);
+      d.scale.set(st.s[0], st.s[1], st.s[2]);
       d.updateMatrix();
       this.bullets.setMatrixAt(i, d.matrix);
+      this.bullets.setColorAt(i, this.tmpColor.set(st.color));
     }
+    if (this.bullets.instanceColor) this.bullets.instanceColor.needsUpdate = true;
     this.bullets.count = n;
     this.bullets.instanceMatrix.needsUpdate = true;
   }
@@ -357,7 +376,7 @@ export class GameRenderer {
       let v = this.blockViews.get(b.id);
       if (!v) {
         const group = new THREE.Group();
-        const isWeapon = b.reward.kind === 'weapon';
+        const isWeapon = b.reward.kind !== 'soldiers';
         const box = new THREE.Mesh(
           new THREE.BoxGeometry(b.w, 1.5, b.d),
           new THREE.MeshLambertMaterial({ color: isWeapon ? 0xe0a21a : 0x8d98a5 }),
