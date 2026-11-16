@@ -21,6 +21,9 @@ Rules worth knowing: enemies walk straight down the lane (no homing). Any enemy 
 or slips past it to the bottom of the screen, costs lives. Volleys span the squad's full width, so
 nothing in front of you is missed.
 
+Pace: the whole simulation clock runs 1.25x real time (`GAME_SPEED` in `src/main.ts`; everything scales together so
+balance is unchanged). Weapon ranges live in `WEAPONS` (`src/sim/game.ts`): rifle 32, shotgun 18, rocket 32, laser 44.
+
 Pickups: shoot-blocks (+soldiers or weapon), counting blocks (shoot them to raise the value), math gates
 (+N, xN, -N, /N) and purple **upgrade gates** (weapon or stat). Weapons: SHOTGUN (close, wide), ROCKETS
 (splash, best vs wide hordes), LASER (piercing, best vs columns/tanks). Shoot **barrels** while enemies stand

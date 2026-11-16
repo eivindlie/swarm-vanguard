@@ -11,7 +11,10 @@ import { installDebugApi } from './debug/api';
 import { policies } from './sim/bots';
 
 const params = new URLSearchParams(location.search);
-const timeScale = Math.max(0.1, Number(params.get('speed') ?? 1));
+// The whole simulation clock runs 25% faster than real time (everything scales together, so balance is
+// unchanged); `?speed=` multiplies on top of it for testing.
+const GAME_SPEED = 1.25;
+const timeScale = Math.max(0.1, Number(params.get('speed') ?? 1)) * GAME_SPEED;
 const save = loadSave();
 const settings = loadSettings();
 const urlLevel = params.get('level');

@@ -23,10 +23,10 @@ export interface WeaponDef {
   splash: number; // explosion radius (0 = none)
 }
 export const WEAPONS: Record<WeaponType, WeaponDef> = {
-  rifle: { name: 'RIFLE', dmgMul: 1, intervalMul: 1, speed: 22, pierce: 0, cone: 0, pelletMul: 1, range: 22, splash: 0 },
-  shotgun: { name: 'SHOTGUN', dmgMul: 1.3, intervalMul: 0.9, speed: 20, pierce: 0, cone: 0.8, pelletMul: 3, range: 14, splash: 0 },
-  rocket: { name: 'ROCKET', dmgMul: 1.75, intervalMul: 1.7, speed: 13, pierce: 0, cone: 0, pelletMul: 0.5, range: 24, splash: 1.8 },
-  laser: { name: 'LASER', dmgMul: 0.8, intervalMul: 0.6, speed: 42, pierce: 5, cone: 0, pelletMul: 1, range: 30, splash: 0 },
+  rifle: { name: 'RIFLE', dmgMul: 1, intervalMul: 1, speed: 26, pierce: 0, cone: 0, pelletMul: 1, range: 32, splash: 0 },
+  shotgun: { name: 'SHOTGUN', dmgMul: 1.3, intervalMul: 0.9, speed: 23, pierce: 0, cone: 0.8, pelletMul: 3, range: 18, splash: 0 },
+  rocket: { name: 'ROCKET', dmgMul: 1.75, intervalMul: 1.7, speed: 15, pierce: 0, cone: 0, pelletMul: 0.5, range: 32, splash: 1.8 },
+  laser: { name: 'LASER', dmgMul: 0.8, intervalMul: 0.6, speed: 42, pierce: 5, cone: 0, pelletMul: 1, range: 44, splash: 0 },
 };
 export const MAX_SQUAD = 300; // hard cap: keeps rendering/balance sane
 
