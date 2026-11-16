@@ -2,7 +2,7 @@
 // bot still wins >= 95% (then >= 85%). If no k does either, fall back to the hardest k a balanced player
 // clears, with a margin. (Picking the easiest k would give nearly empty levels.)
 // Writes src/levels/tuned.json (read by src/levels/index.ts). Bonus levels stay at k = 1.
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { LEVEL_COUNT, makeLevels } from '../src/levels';
 import { policies, runBot } from './bot';
 
@@ -11,7 +11,9 @@ const SEEDS = 24;
 const SAFETY = 0.8;
 const GRID = Array.from({ length: 26 }, (_, i) => Math.round(0.2 * Math.pow(1.17, i) * 100) / 100); // 0.2 .. ~10
 const names = ['balanced', 'naive', 'pure-fight', 'greedy-expand'] as const;
-const IDS = Array.from({ length: LEVEL_COUNT }, (_, i) => i + 1);
+// optional 2nd argument: only re-tune these ids (comma separated); the rest of tuned.json is kept
+const only = process.argv[3]?.split(',').map(Number);
+const IDS = only ?? Array.from({ length: LEVEL_COUNT }, (_, i) => i + 1);
 
 function rates(id: number, k: number): Record<string, number> {
   const level = makeLevels({ [id]: k }).find((l) => l.id === id)!;
@@ -25,7 +27,8 @@ function rates(id: number, k: number): Record<string, number> {
 }
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
-const out: Record<string, number> = {};
+const tunedFile = new URL('../src/levels/tuned.json', import.meta.url);
+const out: Record<string, number> = only ? JSON.parse(readFileSync(tunedFile, 'utf8')) : {};
 
 for (const id of IDS) {
   const table = GRID.map((k) => ({ k, r: rates(id, k) }));
@@ -53,4 +56,4 @@ for (const id of IDS) {
   console.log(`level ${id}: k=${chosen.k}  ${chosen.why}`);
 }
 
-writeFileSync(new URL('../src/levels/tuned.json', import.meta.url), JSON.stringify(out, null, 2) + '\n');
+writeFileSync(tunedFile, JSON.stringify(out, null, 2) + '\n');

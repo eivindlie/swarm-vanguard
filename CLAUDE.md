@@ -12,7 +12,7 @@ after each commit** (the user has said this is fine). Pushing to `main` deploys 
 - `npm run dev` dev server (LAN reachable, open it on a phone) · `npm test` vitest (sim) · `npm run e2e` Playwright
   (phone viewport, inputs, draw-call/triangle budget) · `npm run build` typecheck + production build.
 - `npm run balance [seeds]` headless bot win rates per level (pass `all` as 2nd arg to include slow bonus levels).
-- `npx tsx tools/tune.ts` re-tunes horde size per level into `src/levels/tuned.json` (~15 min, run it in the background).
+- `npx tsx tools/tune.ts [minBal] [ids]` re-tunes horde size per level into `src/levels/tuned.json` (~15 min for all, run it in the background; pass ids like `5,7` to retune only those).
 - Visual feedback loop: `node tools/shots.mjs <levelId> <seed> <ticks,..> <balanced|x> [theme 0-3] [dpr]` writes
   `screenshots/*.png`; `tools/boss-shots.mjs`, `tools/menu-shot.mjs`. **Look at the screenshots** after visual changes.
 - Other tools: `trace.ts` (squad size over time per policy), `scan.ts` (win rate vs k), `jackpot-timing.ts`,
@@ -54,5 +54,6 @@ after each commit** (the user has said this is fine). Pushing to `main` deploys 
   them needs a retune.
 - Elites (`elite` kind, `grind`+`holds` in `ENEMY_DEFS`) stand at the squad, pin it and eat soldiers until killed; swarm carpets use `grid: true` spawns.
 - Menu: the big button continues from the furthest unlocked level; tapping a level plays exactly that one.
-- Known: levels 5 and 7 are still won by standing still (the tuner falls back there).
+- If standing still ever wins a level, re-roll its layout: `npx tsx tools/reroll.ts <id>` writes `src/levels/variants.json`,
+  then `npx tsx tools/tune.ts 0.8 <id>` re-tunes only that level (levels 5 and 7 needed it).
 - The repo is `eivindlie/swarm-vanguard` (public: Pages from a private repo needs a paid plan). Don't change visibility without asking.

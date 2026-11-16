@@ -1,6 +1,7 @@
 import type { LevelDef } from '../sim/level';
 import { Rng } from '../sim/rng';
 import tuned from './tuned.json';
+import variants from './variants.json';
 import {
   LevelBuilder, add, mul, sub, div, soldiers, multi, dmgUp, rateUp, pierceUp, spreadUp, shotgun, rocket, laser,
   upShotgun, upRocket, upLaser, upDamage, upRate, upPierce,
@@ -43,8 +44,9 @@ function makeHand(K: (id: number) => number): LevelDef[] {
 }
 
 // --- Levels 4+: same ingredients, deterministic seeded layouts, rising pressure. ---
-function generated(id: number, K: (id: number) => number): LevelDef {
-  const rng = new Rng(id * 7919);
+function generated(id: number, K: (id: number) => number, variant = (variants as Record<string, number>)[String(id)] ?? 0): LevelDef {
+  // `variant` re-rolls the layout of one level (tools/reroll.ts picks one where standing still loses)
+  const rng = new Rng(id * 7919 + variant * 104729);
   const b = new LevelBuilder(K(id));
   const waves = 4 + Math.floor(id / 4);
   const scale = Math.pow(1.13, id);
@@ -140,10 +142,10 @@ function makeBonus(K: (id: number) => number): Record<number, LevelDef> {
 }
 
 /** Build all levels in play order (a bonus level follows each world); `over` lets the tuner try other multipliers. */
-export function makeLevels(over: Overrides = {}): LevelDef[] {
+export function makeLevels(over: Overrides = {}, variantOver: Overrides = {}): LevelDef[] {
   const K = (id: number) => over[id] ?? (tuned as Record<string, number>)[String(id)] ?? 1;
   const ids = Array.from({ length: LEVEL_COUNT - 3 }, (_, i) => i + 4);
-  const regular = [...makeHand(K), ...ids.map((id) => generated(id, K))];
+  const regular = [...makeHand(K), ...ids.map((id) => generated(id, K, variantOver[id]))];
   const bonus = makeBonus(K);
   return regular.flatMap((l) => (bonus[l.id] ? [l, bonus[l.id]] : [l]));
 }
