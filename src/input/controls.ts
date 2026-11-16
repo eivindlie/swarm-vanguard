@@ -14,6 +14,8 @@ export class Controls {
 
   constructor(el: HTMLElement) {
     el.addEventListener('pointerdown', (e) => {
+      // Don't capture the pointer for UI taps: capture would retarget the click away from the button.
+      if ((e.target as HTMLElement).closest?.('button, .overlay')) return;
       this.dragging = true;
       this.startPx = e.clientX;
       this.startTarget = this.targetX;

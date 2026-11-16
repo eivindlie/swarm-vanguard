@@ -148,6 +148,11 @@ export class Game {
     }
   }
 
+  /** Debug/test helper: drop `count` enemies just ahead of the squad. */
+  debugSpawn(kind: EnemyKind, count: number, ahead = 14): void {
+    this.spawn({ t: 'enemies', y: this.squad.y + ahead, x: 0, spreadX: LANE_HALF - 0.4, spreadY: 10, count, kind });
+  }
+
   private spawn(s: LevelDef['spawns'][number]): void {
     if (s.t === 'enemies') {
       const def = ENEMY_DEFS[s.kind];

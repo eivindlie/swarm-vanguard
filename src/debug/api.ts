@@ -27,6 +27,11 @@ export function installDebugApi(h: DebugHooks) {
     resume: () => h.setPaused(false),
     restart: (level?: number, seed?: number) => h.restart(level, seed),
     start: () => h.start(),
+    stress: (n = 320) => {
+      const g = h.getGame();
+      g.debugSpawn('grunt', n, 12);
+      g.squad.count = Math.max(g.squad.count, 100);
+    },
     raw: () => h.getGame(),
   };
 }
