@@ -83,12 +83,17 @@ function refreshToggles() {
 /** The level the big button continues from: the furthest the player has unlocked (a debug `?level=` overrides it). */
 const frontierIdx = () => (urlLevel ? idxOfId(Number(urlLevel)) : unlockedCount(save, LEVELS) - 1);
 
+let menuPage = -1; // -1 = follow the frontier
 function refreshMenu() {
   hud.setCoins(save.coins);
+  if (menuPage < 0) menuPage = Hud.pageOf(LEVELS[frontierIdx()]);
   // the big button always continues from the frontier; tapping any unlocked level plays exactly that level
   hud.renderLevels(LEVELS, urlLevel ? LEVELS.length : unlockedCount(save, LEVELS), save.stars, frontierIdx(), (i) => {
     restart(LEVELS[i].id);
     startGame();
+  }, menuPage, (p) => {
+    menuPage = p;
+    refreshMenu();
   });
   refreshToggles();
 }
@@ -166,6 +171,7 @@ hud.endBtn.addEventListener('click', () => {
   paused = false;
 });
 hud.menuBtn.addEventListener('click', () => {
+  menuPage = -1; // back to the page of the furthest level
   restart(LEVELS[frontierIdx()].id);
   paused = true;
   refreshMenu();

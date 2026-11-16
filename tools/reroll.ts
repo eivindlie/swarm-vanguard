@@ -3,10 +3,10 @@
 // Usage: npx tsx tools/reroll.ts 5 7   -> writes src/levels/variants.json (then re-tune those levels with
 // `npx tsx tools/tune.ts 0.8 5,7`).
 import { readFileSync, writeFileSync } from 'node:fs';
-import { makeLevels } from '../src/levels';
+import { LEVEL_COUNT, makeLevels } from '../src/levels';
 import { policies, runBot } from './bot';
 
-const ids = process.argv.slice(2).map(Number).filter((n) => n >= 4 && n <= 16);
+const ids = process.argv.slice(2).map(Number).filter((n) => n >= 4 && n <= LEVEL_COUNT);
 const file = new URL('../src/levels/variants.json', import.meta.url);
 const current: Record<string, number> = JSON.parse(readFileSync(file, 'utf8'));
 const tuned: Record<string, number> = JSON.parse(readFileSync(new URL('../src/levels/tuned.json', import.meta.url), 'utf8'));

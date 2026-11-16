@@ -255,6 +255,8 @@ describe('new mechanics', () => {
 });
 
 import { recordWin, unlockedCount } from '../src/meta/save';
+import tunedJson from '../src/levels/tuned.json';
+import { LEVEL_COUNT } from '../src/levels';
 import { policies, toInput } from '../src/sim/bots';
 
 describe('bonus levels and jackpot rewards', () => {
@@ -275,7 +277,7 @@ describe('bonus levels and jackpot rewards', () => {
     expect(g.weapon).toBe('laser');
   });
   it('the game has 16 regular levels plus optional levels after each world, with unique ids', () => {
-    expect(LEVELS.filter((l) => !l.bonus)).toHaveLength(16);
+    expect(LEVELS.filter((l) => !l.bonus)).toHaveLength(LEVEL_COUNT);
     expect(LEVELS.filter((l) => l.bonus && l.bonus !== 'siege')).toHaveLength(4);
     expect(LEVELS.filter((l) => l.bonus === 'siege').length).toBeGreaterThanOrEqual(1);
     expect(new Set(LEVELS.map((l) => l.id)).size).toBe(LEVELS.length);
@@ -488,5 +490,19 @@ describe('siege (arena) rules', () => {
     expect(results.naive.won).toBe(0);
     expect(results.park.won).toBe(0);
     expect(results.balanced.won).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('level data hygiene', () => {
+  it('every regular level above 1 has a tuned difficulty (a missing entry silently means k = 1)', () => {
+    for (let id = 2; id <= LEVEL_COUNT; id++) expect((tunedJson as Record<string, number>)[String(id)], `level ${id}`).toBeGreaterThan(0);
+  });
+  it('the first minute of every regular level is survivable for the balanced bot (no lethal first wave)', () => {
+    for (const l of LEVELS.filter((x) => !x.bonus)) {
+      const g = new Game(l, 1);
+      for (let i = 0; i < 300 && g.phase === 'playing'; i++) g.step(toInput(policies.balanced(g)));
+      expect(g.phase, `${l.name} (${l.id})`).toBe('playing');
+      expect(g.squad.count, `${l.name} (${l.id}) squad after 5 s`).toBeGreaterThanOrEqual(5);
+    }
   });
 });

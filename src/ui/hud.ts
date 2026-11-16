@@ -7,6 +7,8 @@ import type { GameRenderer } from '../render/renderer';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
+const BONUS_ICON: Record<NonNullable<LevelDef['bonus']>, string> = { jackpot: '🎁', swarm: '🎁', siege: '🏰', blast: '💥', gates: '🚪', bossrush: '👑' };
+
 export class Hud {
   private count = $('count');
   private bar = $('bar').querySelector('i') as HTMLElement;
@@ -89,24 +91,58 @@ export class Hud {
     $('coins').textContent = `Coins: ${n}`;
   }
 
-  /** Level grid in play order, grouped by world. `selected`/`unlocked` are positions (1-based unlocked count). */
-  renderLevels(levels: LevelDef[], unlocked: number, stars: Record<string, number>, selected: number, onPick: (index: number) => void) {
+  /** The worlds are shown four to a page ("page 1", "page 2", ...). */
+  static pageOf(level: LevelDef): number {
+    return Math.floor(themeIndexForLevel(level) / 4);
+  }
+
+  /**
+   * Level grid in play order, grouped by world, one page at a time. `selected`/`unlocked` are positions in the full list
+   * (`unlocked` is a 1-based count). `onPage` is called with the new page number when a page tab is tapped.
+   */
+  renderLevels(
+    levels: LevelDef[],
+    unlocked: number,
+    stars: Record<string, number>,
+    selected: number,
+    onPick: (index: number) => void,
+    page = Hud.pageOf(levels[selected]),
+    onPage: (page: number) => void = () => undefined,
+  ) {
     const host = $('levels');
     host.textContent = '';
+    // page tabs (only when there is more than one page)
+    const pages = Math.max(...levels.map(Hud.pageOf)) + 1;
+    const tabs = $('pages');
+    tabs.textContent = '';
+    tabs.style.display = pages > 1 ? 'flex' : 'none';
+    for (let p = 0; p < pages; p++) {
+      const t = document.createElement('button');
+      t.className = 'pg' + (p === page ? ' on' : '');
+      const firstIdx = levels.findIndex((l) => Hud.pageOf(l) === p);
+      t.textContent = `PAGE ${p + 1}${firstIdx + 1 > unlocked ? ' 🔒' : ''}`;
+      t.addEventListener('click', () => onPage(p));
+      tabs.appendChild(t);
+    }
+    let prevTheme = -1;
     for (let i = 0; i < levels.length; i++) {
       const lv = levels[i];
-      if (i === 0 || themeIndexForLevel(lv) !== themeIndexForLevel(levels[i - 1])) {
+      if (Hud.pageOf(lv) !== page) continue;
+      const ti = themeIndexForLevel(lv);
+      if (ti !== prevTheme) {
+        prevTheme = ti;
         const h = document.createElement('div');
         h.className = 'lvh';
-        h.textContent = THEMES[themeIndexForLevel(lv)].name.toUpperCase();
+        h.textContent = THEMES[ti].name.toUpperCase();
         host.appendChild(h);
       }
       const b = document.createElement('button');
       b.className = 'lv' + (i === selected ? ' sel' : '') + (lv.bonus ? ' bonus' : '');
       b.disabled = i + 1 > unlocked;
       const st = stars[lv.id] ?? 0;
-      const label = lv.bonus === 'siege' ? '🏰' : lv.bonus ? '🎁' : String(lv.id);
-      b.innerHTML = `${label}<small>${lv.bonus ? (st ? 'DONE' : lv.bonus === 'siege' ? 'SIEGE' : 'BONUS') : '★'.repeat(st) + '☆'.repeat(st ? 3 - st : 0)}</small>`;
+      const label = lv.bonus ? BONUS_ICON[lv.bonus] : String(lv.id);
+      const tag = lv.bonus === 'siege' ? 'SIEGE' : 'BONUS';
+      b.innerHTML = `${label}<small>${lv.bonus ? (st ? 'DONE' : tag) : '★'.repeat(st) + '☆'.repeat(st ? 3 - st : 0)}</small>`;
       b.addEventListener('click', () => onPick(i));
       host.appendChild(b);
     }

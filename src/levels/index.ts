@@ -50,13 +50,17 @@ function makeHand(K: (id: number) => number): LevelDef[] {
 function generated(id: number, K: (id: number) => number, variant = (variants as Record<string, number>)[String(id)] ?? 0): LevelDef {
   // `variant` re-rolls the layout of one level (tools/reroll.ts picks one where standing still loses)
   const rng = new Rng(id * 7919 + variant * 104729);
+  // Page 2 (ids 17+) restarts the scale at a moderate level and climbs again; for page 1 `lid` is simply `id`,
+  // so the first 16 levels come out exactly as before.
+  const page = Math.floor((id - 1) / 16);
+  const lid = page === 0 ? id : ((id - 1) % 16) + 1 + 4;
   const b = new LevelBuilder(K(id));
-  const waves = 4 + Math.floor(id / 4);
-  const scale = Math.pow(1.13, id);
+  const waves = 4 + Math.floor(lid / 4);
+  const scale = Math.pow(1.13, lid);
   const weapons = [dmgUp, rateUp, pierceUp, spreadUp, shotgun, rocket, laser];
   const upgrades = [upLaser, upRocket, upShotgun, upDamage, upRate, upPierce];
   // a free opening gate: the squad gets its first growth before the first horde arrives
-  b.gates(add(4 + id), add(4 + id), 12);
+  b.gates(add(4 + lid), add(4 + lid), 12);
   for (let w = 0; w < waves; w++) {
     // soft start, heavy finish
     const prog = 0.2 + 1.6 * Math.pow(w / (waves - 1), 1.5);
@@ -67,8 +71,8 @@ function generated(id: number, K: (id: number) => number, variant = (variants as
     if (id >= 4 && rng.next() < 0.55) b.barrel(hx, 1.5);
     b.horde(n, 'grunt', { x: hx, w: 1.7 });
     if (id >= 5 && w % 2 === 1) b.horde(Math.round(n * 0.35), 'runner', { x: hx, w: 1.7, after: 8 });
-    if (id >= 4 && w % 3 === 2) b.horde(Math.max(2, Math.round(id / 2)), 'brute', { x: hx, w: 1.6, after: 11 });
-    if (id >= 6 && w % 3 === 1) b.horde(Math.max(2, Math.round(2 + id / 3)), 'splitter', { x: hx, w: 1.5, after: 10 });
+    if (id >= 4 && w % 3 === 2) b.horde(Math.max(2, Math.round(lid / 2)), 'brute', { x: hx, w: 1.6, after: 11 });
+    if (id >= 6 && w % 3 === 1) b.horde(Math.max(2, Math.round(2 + lid / 3)), 'splitter', { x: hx, w: 1.5, after: 10 });
     // an elite Warlord: tough, does not die on contact and grinds the squad until it is killed
     if (id >= 6 && w % 4 === 3) b.horde(id >= 12 ? 2 : 1, 'elite', { x: hx, w: 1.2, after: 12 });
     // a gate pair: one decent side, one trap. From level 3 on, many pairs offer an upgrade instead.
@@ -80,27 +84,27 @@ function generated(id: number, K: (id: number) => number, variant = (variants as
     let right;
     if (id >= 3 && rng.next() < 0.4) {
       const up = upgrades[Math.floor(rng.next() * upgrades.length)];
-      const other = rng.next() < 0.5 ? add(4 + id) : rng.next() < 0.4 ? sub(3 + id * 2) : div(2);
+      const other = rng.next() < 0.5 ? add(4 + lid) : rng.next() < 0.4 ? sub(3 + lid * 2) : div(2);
       [left, right] = side ? [up, other] : [other, up];
     } else {
-      const good = rng.next() < 0.3 ? mul(2) : add(4 + id);
+      const good = rng.next() < 0.3 ? mul(2) : add(4 + lid);
       // traps must matter against a big squad: usually they halve or third it, only sometimes a flat loss
-      const bad = rng.next() < 0.25 ? sub(3 + id * 2) : rng.next() < 0.55 ? div(2) : div(3);
+      const bad = rng.next() < 0.25 ? sub(3 + lid * 2) : rng.next() < 0.55 ? div(2) : div(3);
       [left, right] = side ? [good, bad] : [bad, good];
     }
     b.gates(left, right);
     const roll = rng.next();
-    if (roll < 0.45) b.block(rewardX, Math.round(14 * scale * prog), soldiers(Math.round(6 * Math.pow(1.1, id))));
-    else if (roll < 0.75) b.counter(rewardX * 1.1, 3 + Math.floor(id / 2), 1, 30 + id * 4, 12);
+    if (roll < 0.45) b.block(rewardX, Math.round(14 * scale * prog), soldiers(Math.round(6 * Math.pow(1.1, lid))));
+    else if (roll < 0.75) b.counter(rewardX * 1.1, 3 + Math.floor(lid / 2), 1, 30 + lid * 4, 12);
     else b.block(rewardX, Math.round(16 * scale * prog), weapons[Math.floor(rng.next() * weapons.length)]);
   }
   // the last level of a world ends with a mega horde (an endless red mass, as in the ads)
   if (id % 4 === 0) {
     b.horde(1, 'elite', { x: 0, w: 1.0, after: 14 }); // a Warlord leads the carpet
-    b.swarm(80 + id * 40, 'grunt', 22);
+    b.swarm(80 + lid * 40, 'grunt', 22);
   }
   b.horde(Math.round(14 * scale), 'grunt', { after: 18 });
-  return b.build(id, NAMES[id - 1] ?? `Level ${id}`, Math.round(260 * id * 1.3), 20 + id * 5, undefined, 4 + id * 1.2);
+  return b.build(id, NAMES[id - 1] ?? `Level ${id}`, Math.round(260 * lid * 1.3), 20 + id * 5, undefined, 4 + lid * 1.2);
 }
 
 // --- Bonus levels: one after each world. Jackpot = giant blocks with absurd reward packs and no danger;

@@ -60,7 +60,7 @@ export interface LevelDef {
   spawns: Spawn[];
   coins: number; // reward for clearing (meta-ready)
   hpMul?: number; // enemy HP multiplier for this level (grunts/runners/brutes)
-  bonus?: 'jackpot' | 'swarm' | 'siege'; // optional side levels: no fail pressure (jackpot), a power-fantasy horde (swarm) or a fixed-screen siege
+  bonus?: 'jackpot' | 'swarm' | 'siege' | 'blast' | 'gates' | 'bossrush'; // optional side levels: no fail pressure (jackpot), a power-fantasy horde (swarm) or a fixed-screen siege
   arena?: ArenaDef; // present = this is a siege level (every arena rule in the sim hangs on this)
   world?: number; // 0-based world index; defaults to the block of four levels the id falls in
   bossAdds?: number; // grunts the boss calls in at 66% and 33% HP (already scaled by the level's difficulty)

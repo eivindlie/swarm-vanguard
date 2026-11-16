@@ -71,6 +71,9 @@
     .overlay h1 { margin: 0; font-size: 33px; white-space: nowrap; text-shadow: 0 4px 0 #0008; }
     .overlay p { margin: 0; opacity: 0.85; }
     #coins { font-weight: 800; color: #ffe27a; }
+    #pages { display: none; gap: 6px; }
+    .pg { border: 2px solid #ffffff44; border-radius: 999px; padding: 5px 16px; font-size: 12px; font-weight: 900; letter-spacing: 1px; color: #fff; background: #ffffff14; }
+    .pg.on { background: #ffb21f; border-color: #ffd27a; color: #1b1b2f; }
     #levels { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; width: 100%; max-width: 340px; }
     .lvh { grid-column: 1 / -1; font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #ffe27a; text-align: left; margin-top: 4px; opacity: 0.9; }
     #shop { background: #0b0e22; z-index: 5; }
@@ -105,7 +108,7 @@
       <div id="hint"><div class="hand">👆</div><span>DRAG TO STEER</span></div>
       <div id="count">0</div>
     </div>
-    <div class="overlay show" id="start"><h1>SWARM VANGUARD</h1><p>Drag to steer. Shoot blocks, pick gates, grow your squad. Tap a level to play it.</p><div id="coins"></div><button class="btn" id="startBtn">Tap to start</button><div id="levels"></div><button class="btn ghost" id="shopBtn">Upgrades</button><button class="btn ghost" id="installMenuBtn" style="display:none">📲 Install app</button><div id="toggles"></div></div>
+    <div class="overlay show" id="start"><h1>SWARM VANGUARD</h1><p>Drag to steer. Shoot blocks, pick gates, grow your squad. Tap a level to play it.</p><div id="coins"></div><button class="btn" id="startBtn">Tap to start</button><div id="pages"></div><div id="levels"></div><button class="btn ghost" id="shopBtn">Upgrades</button><button class="btn ghost" id="installMenuBtn" style="display:none">📲 Install app</button><div id="toggles"></div></div>
     <div class="overlay" id="shop"><h2>UPGRADES</h2><div id="shopCoins" style="font-weight:800;color:#ffe27a"></div><div id="shopRows" style="display:flex;flex-direction:column;gap:8px;width:100%;align-items:center"></div><button class="btn ghost" id="shopBack">Back</button></div>
     <div class="overlay" id="end"><h1 id="endTitle"></h1><div id="stars"></div><p id="endText"></p><button class="btn" id="endBtn">Retry</button><button class="btn ghost" id="menuBtn">Level select</button></div>
     <div id="install" role="dialog" aria-label="Install Swarm Vanguard">
