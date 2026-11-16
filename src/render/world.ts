@@ -197,6 +197,8 @@ export class World {
   private flags: THREE.Mesh[] = [];
   private theme!: Theme;
   private time = 0;
+  /** Low quality: no ambient particles. */
+  lowQuality = false;
 
   constructor(private scene: THREE.Scene) {
     this.sunLight.position.set(-6, 14, 6);
@@ -364,7 +366,10 @@ export class World {
     this.flags.forEach((f, i) => {
       f.rotation.y = Math.sin(this.time * 4 + i) * 0.35;
     });
-    if (this.ambient) this.updateAmbient(dt, camera);
+    if (this.ambient) {
+      this.ambient.mesh.visible = !this.lowQuality;
+      if (!this.lowQuality) this.updateAmbient(dt, camera);
+    }
   }
 
   private updateAmbient(dt: number, camera: THREE.PerspectiveCamera) {

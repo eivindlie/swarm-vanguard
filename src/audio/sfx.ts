@@ -94,6 +94,12 @@ export class Sfx {
     if (good) { this.tone(520, 0.12, 'triangle', 0.18); this.tone(780, 0.18, 'triangle', 0.18, undefined, 0.09); }
     else this.tone(300, 0.3, 'sawtooth', 0.14, 110);
   }
+  /** A rising run of blips for a big reward arriving (the count rolling up). */
+  roll(n: number) {
+    if (!this.ctx || this.muted || !this.ok('roll', 0.25)) return;
+    const blips = Math.min(26, Math.max(6, Math.round(n / 4)));
+    for (let i = 0; i < blips; i++) this.tone(380 * Math.pow(1.0595, Math.min(i, 24)), 0.06, 'triangle', 0.07, undefined, i * 0.03);
+  }
   squadHit() { if (this.ok('squadhit', 0.08)) this.tone(160, 0.1, 'sawtooth', 0.08, 90); }
   win() {
     if (!this.ctx || this.muted) return;

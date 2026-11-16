@@ -60,6 +60,9 @@
     #install .ibtns { display: flex; flex-direction: column; gap: 6px; align-items: stretch; flex: none; }
     #install .btn { padding: 9px 16px; font-size: 15px; border-radius: 12px; }
     @keyframes sheet { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+    #tip { position: absolute; left: 50%; bottom: calc(120px + var(--sab)); transform: translateX(-50%); max-width: 86%; padding: 9px 16px; border-radius: 999px; background: #10142bd9; border: 2px solid #ffffff33; color: #fff; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; text-align: center; opacity: 0; pointer-events: none; z-index: 4; }
+    #tip.show { animation: tip 4s ease-out forwards; }
+    @keyframes tip { 0% { opacity: 0; transform: translate(-50%, 14px); } 8% { opacity: 1; transform: translate(-50%, 0); } 82% { opacity: 1; } 100% { opacity: 0; } }
     #count { position: absolute; transform: translate(-50%, -100%); font-weight: 900; font-size: 26px; color: #fff; -webkit-text-stroke: 4px #1b3a8a; paint-order: stroke fill; text-shadow: 0 3px 0 #1b3a8a; white-space: nowrap; }
     .pop { position: absolute; transform: translate(-50%, -50%); font-weight: 900; font-size: 22px; color: #ffe27a; -webkit-text-stroke: 4px #000a; paint-order: stroke fill; animation: pop 0.9s ease-out forwards; white-space: nowrap; }
     @keyframes pop { from { opacity: 1; transform: translate(-50%, -50%) scale(0.8); } to { opacity: 0; transform: translate(-50%, -160%) scale(1.3); } }
@@ -98,6 +101,7 @@
       <div id="boss"><span>BOSS</span><div class="bb"><i></i></div><b id="bossHp"></b></div>
       <div id="weapon">RIFLE</div>
       <div id="banner"></div>
+      <div id="tip"></div>
       <div id="hint"><div class="hand">👆</div><span>DRAG TO STEER</span></div>
       <div id="count">0</div>
     </div>

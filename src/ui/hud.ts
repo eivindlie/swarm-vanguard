@@ -50,16 +50,27 @@ export class Hud {
     el.classList.add('show');
   }
 
+  showTip(text: string) {
+    const el = $('tip');
+    el.textContent = text;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
+  }
+  tipVisible(): boolean {
+    return $('tip').classList.contains('show');
+  }
+
   showHint() { $('hint').classList.add('show'); }
   hideHint() { $('hint').classList.remove('show'); }
 
-  renderToggles(items: { label: string; on: boolean; toggle: () => void }[]) {
+  renderToggles(items: { label: string; on: boolean; toggle: () => void; onLabel?: string; offLabel?: string }[]) {
     const host = $('toggles');
     host.textContent = '';
     for (const it of items) {
       const b = document.createElement('button');
       b.className = 'tg' + (it.on ? ' on' : '');
-      b.textContent = `${it.label}: ${it.on ? 'ON' : 'OFF'}`;
+      b.textContent = `${it.label}: ${it.on ? (it.onLabel ?? 'ON') : (it.offLabel ?? 'OFF')}`;
       b.addEventListener('click', () => {
         it.toggle();
       });

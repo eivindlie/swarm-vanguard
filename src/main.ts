@@ -33,6 +33,7 @@ const stage = document.getElementById('stage') as HTMLElement;
 const renderer = new GameRenderer(stage);
 if (params.has('theme')) renderer.themeOverride = Number(params.get('theme'));
 renderer.shakeScale = settings.reduceShake ? 0 : 1;
+renderer.setLowQuality(settings.lowQuality);
 const controls = new Controls(stage);
 const hud = new Hud();
 const sfx = new Sfx();
@@ -70,6 +71,7 @@ function refreshToggles() {
   hud.renderToggles([
     { label: 'Music', on: settings.music, toggle: () => { settings.music = !settings.music; sfx.setMusic(settings.music); saveSettings(settings); refreshToggles(); } },
     { label: 'Vibration', on: settings.haptics, toggle: () => { settings.haptics = !settings.haptics; saveSettings(settings); refreshToggles(); buzz(15); } },
+    { label: 'Graphics', onLabel: 'HIGH', offLabel: 'LOW', on: !settings.lowQuality, toggle: () => { settings.lowQuality = !settings.lowQuality; renderer.setLowQuality(settings.lowQuality); saveSettings(settings); refreshToggles(); } },
     { label: 'Screen shake', on: !settings.reduceShake, toggle: () => { settings.reduceShake = !settings.reduceShake; renderer.shakeScale = settings.reduceShake ? 0 : 1; saveSettings(settings); refreshToggles(); } },
   ]);
 }
@@ -209,6 +211,7 @@ function handleEvents() {
         const p = renderer.project(e.x, e.y, 1.5);
         hud.popup(e.label, p.x, p.y);
         sfx.blockBreak();
+        if (e.gain >= 10) sfx.roll(e.gain);
         hitStop = Math.max(hitStop, e.big ? 0.14 : 0.06);
         buzz(e.big ? [30, 30, 60] : 25);
         if (e.big) sfx.win();
@@ -218,6 +221,7 @@ function handleEvents() {
         const p = renderer.project(e.x, e.y, 1.5);
         hud.popup(e.label, p.x, p.y);
         sfx.gate(e.delta >= 0);
+        if (e.delta >= 10) sfx.roll(e.delta);
         buzz(e.delta >= 0 ? 14 : 35);
         break;
       }
@@ -235,6 +239,29 @@ function handleEvents() {
       case 'lose': sfx.lose(); buzz([80, 40, 120]); break;
     }
   }
+}
+
+// ----------------------------------------------------------------- one-time tips
+// Each new mechanic gets a short pill the first time it comes into view (never while autoplaying or mid-hint).
+let tipClock = 0;
+function maybeTip(dt: number) {
+  tipClock += dt;
+  if (tipClock < 0.35 || params.has('autoplay') || paused || game.phase !== 'playing' || hud.tipVisible()) return;
+  tipClock = 0;
+  const seen = (k: string) => settings.tipsSeen.includes(k);
+  const sq = game.squad;
+  const near = (y: number) => y > sq.y && y - sq.y < 30;
+  const say = (k: string, text: string) => {
+    settings.tipsSeen.push(k);
+    saveSettings(settings);
+    hud.showTip(text);
+  };
+  if (!seen('gate') && game.gates.some((g) => !g.used && g.side.op !== 'upgrade' && near(g.y))) say('gate', 'STEER INTO THE BETTER GATE');
+  else if (!seen('block') && game.blocks.some((b) => near(b.y))) say('block', 'SHOOT BLOCKS TO BREAK THEM: REWARDS INSIDE');
+  else if (!seen('upgrade') && game.gates.some((g) => !g.used && g.side.op === 'upgrade' && near(g.y))) say('upgrade', 'PURPLE GATE = WEAPON UPGRADE');
+  else if (!seen('counter') && game.counters.some((c) => near(c.y))) say('counter', 'SHOOT THE GOLD BLOCK: ITS VALUE GROWS');
+  else if (!seen('barrel') && game.barrels.some((b) => near(b.y))) say('barrel', 'SHOOT THE BARREL: BOOM!');
+  else if (!seen('splitter') && game.enemies.some((e) => e.kind === 'splitter' && e.y - sq.y < 30)) say('splitter', 'SLIMES SPLIT INTO MINIS WHEN SHOT');
 }
 
 function showEndScreen() {
@@ -283,6 +310,7 @@ function frame(now: number) {
     }
   }
   sfx.setIntensity(game.enemies.some((e) => e.kind === 'boss' && e.awake) ? 1 : 0);
+  maybeTip(dt);
 
   if (game.phase !== 'playing' && !shownEnd) {
     shownEnd = true;

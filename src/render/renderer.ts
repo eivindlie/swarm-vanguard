@@ -35,6 +35,16 @@ export class GameRenderer {
   private drops = 0;
   private slowFor = 0;
   private fastFor = 0;
+  /** Low quality: pixel ratio capped at 1.25, nearer LOD, no ambient particles. */
+  setLowQuality(low: boolean) {
+    this.crowd.lowQuality = low;
+    this.world.lowQuality = low;
+    this.maxDpr = low ? Math.min(window.devicePixelRatio || 1, 1.25) : Math.min(window.devicePixelRatio || 1, 2);
+    this.dpr = Math.min(this.dpr, this.maxDpr);
+    if (!low) this.drops = 0;
+    this.resize();
+  }
+
   /** Accessibility: scale camera shake (0 disables it). */
   shakeScale = 1;
   /** Debug: force a world (0-based) regardless of level. */

@@ -289,3 +289,29 @@ test('the big button always continues from the furthest level; tapping another l
   await page.locator('#startBtn').click();
   await expect(page.locator('#lvl')).toHaveText('LEVEL 5');
 });
+
+test('one-time tips appear for a new mechanic and are not repeated', async ({ page }) => {
+  await page.goto('/?level=1&seed=1&autostart=1');
+  await page.waitForFunction(() => (window as any).__game);
+  await expect(page.locator('#tip')).toHaveClass(/show/, { timeout: 15_000 });
+  const seen = await page.evaluate(() => JSON.parse(localStorage.getItem('swarmvanguard.settings')!).tipsSeen);
+  expect(seen.length).toBeGreaterThan(0);
+  const first = seen[0];
+  await page.reload();
+  await page.waitForFunction(() => (window as any).__game);
+  await page.waitForTimeout(500);
+  const after = await page.evaluate(() => JSON.parse(localStorage.getItem('swarmvanguard.settings')!).tipsSeen);
+  expect(after).toContain(first);
+});
+
+test('graphics toggle: low quality lowers the pixel ratio cap and is remembered', async ({ page }) => {
+  await page.goto('/?seed=1');
+  await page.waitForFunction(() => (window as any).__game);
+  await page.getByRole('button', { name: /Graphics: HIGH/ }).click();
+  await expect(page.getByRole('button', { name: /Graphics: LOW/ })).toBeVisible();
+  const low = await page.evaluate(() => JSON.parse(localStorage.getItem('swarmvanguard.settings')!).lowQuality);
+  expect(low).toBe(true);
+  await page.reload();
+  await page.waitForFunction(() => (window as any).__game);
+  await expect(page.getByRole('button', { name: /Graphics: LOW/ })).toBeVisible();
+});

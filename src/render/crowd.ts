@@ -68,6 +68,8 @@ export class Crowd {
   private far = {} as Partial<Record<EnemyKind, Unit>>;
   /** Distance (along the lane) beyond which crowd units switch to their cheap model; shrinks as the crowd grows. */
   lodDistance = 999;
+  /** Low quality caps how far full-detail enemies are drawn. */
+  lowQuality = false;
   private corpseMeshes = {} as Record<CorpseKind, Unit>;
   private corpses: Corpse[] = [];
   private bullets: THREE.InstancedMesh;
@@ -298,6 +300,7 @@ export class Crowd {
     // LOD budget: with few enemies everything is detailed; thousands push the switch distance towards the squad
     const total = game.enemies.length;
     this.lodDistance = total < 450 ? 999 : Math.max(11, 42 - (total - 450) / 50);
+    if (this.lowQuality) this.lodDistance = Math.min(this.lodDistance, total < 150 ? 30 : 16);
     let bars = 0;
     for (const e of game.enemies) {
       let u = this.enemies[e.kind];
