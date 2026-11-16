@@ -1,6 +1,6 @@
 import type { BossVariant } from './models';
 
-export type DecorKind = 'cactus' | 'rock' | 'snowRock' | 'redRock' | 'mesa' | 'redMesa' | 'iceMesa' | 'arch' | 'pine' | 'crystal' | 'deadTree' | 'lavaSpike' | 'lavaRock';
+export type DecorKind = 'obelisk' | 'tower' | 'chimney' | 'cactus' | 'rock' | 'snowRock' | 'redRock' | 'mesa' | 'redMesa' | 'iceMesa' | 'arch' | 'pine' | 'crystal' | 'deadTree' | 'lavaSpike' | 'lavaRock';
 
 export interface DecorSpec {
   kind: DecorKind;
@@ -74,6 +74,7 @@ export const THEMES: Theme[] = [
       { kind: 'cactus', n: 90, minX: 5.2, maxX: 13, scale: [0.9, 1.7] },
       { kind: 'rock', n: 110, minX: 4.9, maxX: 18, scale: [0.6, 1.9] },
       { kind: 'mesa', n: 22, minX: 18, maxX: 38, scale: [1.2, 2.5] },
+      { kind: 'obelisk', n: 9, minX: 7, maxX: 16, scale: [0.9, 1.4] },
     ],
     ambient: { kind: 'dust', color: 0xf3dfae, n: 70 },
   },
@@ -142,6 +143,7 @@ export const THEMES: Theme[] = [
       { kind: 'crystal', n: 50, minX: 5.0, maxX: 16, scale: [0.8, 1.8] },
       { kind: 'snowRock', n: 90, minX: 4.9, maxX: 18, scale: [0.6, 1.8] },
       { kind: 'iceMesa', n: 18, minX: 20, maxX: 40, scale: [1.2, 2.5] },
+      { kind: 'tower', n: 9, minX: 7, maxX: 16, scale: [0.9, 1.4] },
     ],
     ambient: { kind: 'snow', color: 0xffffff, n: 110 },
   },
@@ -175,6 +177,7 @@ export const THEMES: Theme[] = [
       { kind: 'lavaSpike', n: 80, minX: 5.0, maxX: 20, scale: [0.9, 2.0] },
       { kind: 'lavaRock', n: 110, minX: 4.9, maxX: 20, scale: [0.6, 1.9] },
       { kind: 'deadTree', n: 24, minX: 5.5, maxX: 14, scale: [0.9, 1.5] },
+      { kind: 'chimney', n: 9, minX: 7, maxX: 16, scale: [0.9, 1.4] },
     ],
     ambient: { kind: 'embers', color: 0xff9a3a, n: 90 },
   },

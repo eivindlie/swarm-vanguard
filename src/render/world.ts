@@ -81,6 +81,33 @@ function laneTexture(theme: Theme, seed: number): THREE.CanvasTexture {
     g.fillRect(rng.next() * 256, rng.next() * 256, s, s);
   }
   g.globalAlpha = 1;
+  // cracks: ice veins, dried clay, glowing lava seams
+  const crackStyle = theme.id === 'frost' ? { c: '#ffffff', a: 0.75, w: 2.2, glow: '#9fd2f2' } : theme.id === 'volcano' ? { c: '#ff9a2a', a: 0.95, w: 2.6, glow: '#ff5a1a' } : theme.id === 'canyon' ? { c: '#8e4a30', a: 0.55, w: 1.8, glow: '' } : null;
+  if (crackStyle) {
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    for (let k = 0; k < 7; k++) {
+      let x = 12 + rng.next() * 232;
+      let y = rng.next() * 256;
+      g.beginPath();
+      g.moveTo(x, y);
+      for (let s = 0; s < 6; s++) {
+        x = Math.max(6, Math.min(250, x + (rng.next() - 0.5) * 70));
+        y += 18 + rng.next() * 26;
+        g.lineTo(x, y);
+      }
+      g.globalAlpha = crackStyle.a;
+      g.strokeStyle = crackStyle.c;
+      g.lineWidth = crackStyle.w;
+      if (crackStyle.glow) {
+        g.shadowColor = crackStyle.glow;
+        g.shadowBlur = 8;
+      }
+      g.stroke();
+      g.shadowBlur = 0;
+    }
+    g.globalAlpha = 1;
+  }
   // lane edges
   g.fillStyle = theme.laneEdge;
   g.fillRect(0, 0, 10, 256);
@@ -129,6 +156,9 @@ function checkerTexture(): THREE.CanvasTexture {
 
 function decorGeometry(kind: DecorKind): THREE.BufferGeometry {
   switch (kind) {
+    case 'obelisk': return M.obeliskGeometry();
+    case 'tower': return M.towerGeometry();
+    case 'chimney': return M.chimneyGeometry();
     case 'cactus': return M.cactusGeometry();
     case 'rock': return M.rockGeometry(0xb08a5a);
     case 'snowRock': return M.rockGeometry(0x9aa6b8, 0xffffff);

@@ -518,3 +518,34 @@ export function rewardRoofGeometry(w: number): THREE.BufferGeometry {
     return build(parts);
   });
 }
+
+// -------------------------------------------------------------- landmarks
+
+export function obeliskGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: box(1.6, 0.5, 1.6), color: 0xb89a64, pos: [0, 0.25, 0] },
+    { geo: box(1.1, 0.4, 1.1), color: 0xcdb27c, pos: [0, 0.7, 0] },
+    { geo: new THREE.CylinderGeometry(0.34, 0.5, 4.2, 4), color: 0xd9c08a, pos: [0, 3.0, 0], rot: [0, Math.PI / 4, 0] } as unknown as Part,
+    { geo: cone(0.4, 0.9, 4), color: 0xffd23a, pos: [0, 5.55, 0], rot: [0, Math.PI / 4, 0] },
+  ]);
+}
+
+export function towerGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: cyl(0.9, 1.15, 3.2, 8), color: 0xbfe2f5, pos: [0, 1.6, 0] },
+    { geo: cyl(1.15, 1.15, 0.3, 8), color: 0x7fb3d8, pos: [0, 3.35, 0] },
+    { geo: cyl(0.8, 0.9, 1.4, 8), color: 0xd6eefa, pos: [0, 4.2, 0] },
+    { geo: cone(1.05, 1.1, 8), color: 0x4a7fb0, pos: [0, 5.45, 0] },
+    { geo: sph(0.22), color: 0xff8a3a, pos: [0, 6.2, 0] }, // warm lantern
+    { geo: cyl(0.12, 0.12, 2.2, 6), color: 0xff8a3a, pos: [1.25, 2.4, 0.2] }, // pipe
+  ]);
+}
+
+export function chimneyGeometry(): THREE.BufferGeometry {
+  return build([
+    { geo: cyl(1.0, 1.4, 4.5, 7), color: 0x3a2b36, pos: [0, 2.25, 0] },
+    { geo: cyl(1.15, 1.0, 0.5, 7), color: 0x2a1b24, pos: [0, 4.7, 0] },
+    { geo: cyl(0.85, 0.85, 0.2, 7), color: 0xff7a1a, pos: [0, 4.98, 0] }, // glowing rim
+    { geo: box(2.4, 0.5, 2.4), color: 0x2f2029, pos: [0, 0.25, 0] },
+  ]);
+}
