@@ -20,6 +20,40 @@ export class Hud {
   readonly mute = $<HTMLButtonElement>('mute');
   readonly menuBtn = $<HTMLButtonElement>('menuBtn');
 
+  private bossAnnounced = false;
+
+  /** Reset per-level HUD state (call on restart). */
+  resetLevelState() {
+    this.bossAnnounced = false;
+    $('banner').classList.remove('show');
+    this.hideHint();
+  }
+
+  showBanner(title: string, sub: string) {
+    const el = $('banner');
+    el.innerHTML = `<small>${sub}</small>${title}`;
+    el.classList.remove('show');
+    void el.offsetWidth; // restart the CSS animation
+    el.classList.add('show');
+  }
+
+  showHint() { $('hint').classList.add('show'); }
+  hideHint() { $('hint').classList.remove('show'); }
+
+  renderToggles(items: { label: string; on: boolean; toggle: () => void }[]) {
+    const host = $('toggles');
+    host.textContent = '';
+    for (const it of items) {
+      const b = document.createElement('button');
+      b.className = 'tg' + (it.on ? ' on' : '');
+      b.textContent = `${it.label}: ${it.on ? 'ON' : 'OFF'}`;
+      b.addEventListener('click', () => {
+        it.toggle();
+      });
+      host.appendChild(b);
+    }
+  }
+
   setCoins(n: number) {
     $('coins').textContent = `Coins: ${n}`;
   }
@@ -57,6 +91,10 @@ export class Hud {
     this.count.style.top = `${p.y - 14}px`;
     const boss = game.enemies.find((e) => e.kind === 'boss');
     this.boss.classList.toggle('show', !!boss);
+    if (boss && boss.awake && !this.bossAnnounced) {
+      this.bossAnnounced = true;
+      this.showBanner(r.theme.bossName, '⚠ WARNING');
+    }
     if (boss) {
       this.bossBar.style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
       this.bossHp.textContent = String(Math.ceil(boss.hp));

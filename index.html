@@ -22,6 +22,17 @@
     #boss .bb { flex: 1; height: 14px; border-radius: 8px; background: #0008; overflow: hidden; border: 2px solid #fff6; }
     #boss .bb i { display: block; height: 100%; width: 100%; background: linear-gradient(#ff5a5a,#c21f1f); transition: width .08s; }
     #weapon { position: absolute; left: 12px; bottom: 14px; padding: 4px 10px; border-radius: 10px; background: #0007; font-weight: 900; font-size: 13px; letter-spacing: 1px; color: #ffe27a; }
+    #banner { position: absolute; left: 0; right: 0; top: 24%; text-align: center; font-weight: 900; font-size: 30px; letter-spacing: 2px; color: #fff; -webkit-text-stroke: 5px #7a0f0f; paint-order: stroke fill; text-shadow: 0 4px 0 #3a0808; opacity: 0; pointer-events: none; }
+    #banner small { display: block; font-size: 15px; letter-spacing: 3px; color: #ffd23a; -webkit-text-stroke: 4px #3a0808; margin-bottom: 4px; }
+    #banner.show { animation: banner 2.4s ease-out forwards; }
+    @keyframes banner { 0% { opacity: 0; transform: scale(2.2); } 12% { opacity: 1; transform: scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: scale(0.96) translateY(-16px); } }
+    #hint { position: absolute; left: 0; right: 0; bottom: 120px; display: none; flex-direction: column; align-items: center; gap: 6px; color: #fff; font-weight: 900; letter-spacing: 2px; font-size: 15px; text-shadow: 0 2px 6px #000a; pointer-events: none; }
+    #hint.show { display: flex; }
+    #hint .hand { font-size: 46px; animation: swipe 1.6s ease-in-out infinite; }
+    @keyframes swipe { 0%, 100% { transform: translateX(-60px) rotate(-8deg); } 50% { transform: translateX(60px) rotate(8deg); } }
+    #toggles { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    .tg { border: 2px solid #ffffff44; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 800; color: #fff; background: #ffffff14; }
+    .tg.on { background: #3aa65a; border-color: #7be39a; }
     #count { position: absolute; transform: translate(-50%, -100%); font-weight: 900; font-size: 26px; color: #fff; -webkit-text-stroke: 4px #1b3a8a; paint-order: stroke fill; text-shadow: 0 3px 0 #1b3a8a; white-space: nowrap; }
     .pop { position: absolute; transform: translate(-50%, -50%); font-weight: 900; font-size: 22px; color: #ffe27a; -webkit-text-stroke: 4px #000a; paint-order: stroke fill; animation: pop 0.9s ease-out forwards; white-space: nowrap; }
     @keyframes pop { from { opacity: 1; transform: translate(-50%, -50%) scale(0.8); } to { opacity: 0; transform: translate(-50%, -160%) scale(1.3); } }
@@ -47,9 +58,11 @@
       <div id="top"><span id="lvl">LEVEL 1</span><div id="bar"><i></i></div><button id="mute" aria-label="Mute">🔊</button></div>
       <div id="boss"><span>BOSS</span><div class="bb"><i></i></div><b id="bossHp"></b></div>
       <div id="weapon">RIFLE</div>
+      <div id="banner"></div>
+      <div id="hint"><div class="hand">👆</div><span>DRAG TO STEER</span></div>
       <div id="count">0</div>
     </div>
-    <div class="overlay show" id="start"><h1>SWARM VANGUARD</h1><p>Drag to steer. Shoot blocks, pick gates, grow your squad.</p><div id="coins"></div><div id="levels"></div><button class="btn" id="startBtn">Tap to start</button></div>
+    <div class="overlay show" id="start"><h1>SWARM VANGUARD</h1><p>Drag to steer. Shoot blocks, pick gates, grow your squad.</p><div id="coins"></div><div id="levels"></div><div id="toggles"></div><button class="btn" id="startBtn">Tap to start</button></div>
     <div class="overlay" id="end"><h1 id="endTitle"></h1><div id="stars"></div><p id="endText"></p><button class="btn" id="endBtn">Retry</button><button class="btn ghost" id="menuBtn">Level select</button></div>
   </div>
   <script type="module" src="/src/main.ts"></script>

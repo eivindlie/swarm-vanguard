@@ -98,8 +98,8 @@ export interface Gate {
 
 export type GameEvent =
   | { t: 'shot'; n: number }
-  | { t: 'hit'; x: number; y: number }
-  | { t: 'kill'; x: number; y: number; kind: EnemyKind }
+  | { t: 'hit'; x: number; y: number; id: number }
+  | { t: 'kill'; x: number; y: number; kind: EnemyKind; id: number }
   | { t: 'blockHit'; x: number; y: number }
   | { t: 'counterHit'; x: number; y: number }
   | { t: 'blockBreak'; x: number; y: number; label: string }
@@ -390,10 +390,10 @@ export class Game {
 
   private damageEnemy(e: Enemy, dmg: number): void {
     e.hp -= dmg;
-    this.events.push({ t: 'hit', x: e.x, y: e.y });
+    this.events.push({ t: 'hit', x: e.x, y: e.y, id: e.id });
     if (e.hp <= 0) {
       this.kills++;
-      this.events.push({ t: 'kill', x: e.x, y: e.y, kind: e.kind });
+      this.events.push({ t: 'kill', x: e.x, y: e.y, kind: e.kind, id: e.id });
     }
   }
 
@@ -511,7 +511,7 @@ export class Game {
           sq.count -= def.contactDmg;
           e.hp = 0;
           this.kills++;
-          this.events.push({ t: 'kill', x: e.x, y: e.y, kind: e.kind });
+          this.events.push({ t: 'kill', x: e.x, y: e.y, kind: e.kind, id: e.id });
           this.events.push({ t: 'squadHit', lost: def.contactDmg });
         }
       } else if (e.y < sq.y - hd - 1.2) {

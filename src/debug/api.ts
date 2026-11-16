@@ -34,9 +34,10 @@ export function installDebugApi(h: DebugHooks) {
     stress: (n = 320) => {
       const g = h.getGame();
       g.debugSpawn('grunt', n, 12);
-      g.squad.count = Math.max(g.squad.count, 100);
+      g.squad.count = Math.max(g.squad.count, 300);
     },
     viewMismatches: () => h.renderer.viewMismatches(h.getGame()),
+    renderer: () => h.renderer, // debug only: lets tools inspect private render state
     raw: () => h.getGame(),
   };
 }
