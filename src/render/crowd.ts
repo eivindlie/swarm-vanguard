@@ -11,14 +11,19 @@ const MAX_ENEMIES = 900;
 const FAR_MAX: Partial<Record<EnemyKind, number>> = { grunt: 3400, runner: 1400, mini: 2600, splitter: 300 };
 const MAX_BULLETS = 400;
 const FLASH_TIME = 0.14;
+// Visual size only: hit boxes and formation are simulation values and stay as they are, so balance is unchanged.
+const SOLDIER_SCALE = 1.4;
+const ENEMY_SCALE: Record<EnemyKind, number> = { grunt: 1.4, runner: 1.4, mini: 1.4, splitter: 1.3, brute: 1.25, boss: 1.1 };
+const scaleOf = (k: CorpseKind) => (k === 'soldier' ? SOLDIER_SCALE : ENEMY_SCALE[k]);
 // big units flash less so their model stays readable under heavy fire
 const FLASH_GAIN: Record<EnemyKind, number> = { grunt: 1, runner: 1, brute: 0.55, splitter: 0.7, mini: 1, boss: 0.4 };
 
 const BULLET_STYLE: Record<WeaponType, { color: number; s: [number, number, number] }> = {
-  rifle: { color: 0xffd23a, s: [1, 1, 1] },
-  shotgun: { color: 0xffffff, s: [0.9, 0.9, 0.45] },
-  rocket: { color: 0xff7a1a, s: [3, 3, 1.5] },
-  laser: { color: 0x59f0ff, s: [0.8, 0.8, 3] },
+  // big and bright enough to read on a phone screen (they were hairlines before)
+  rifle: { color: 0xffe14a, s: [2.6, 2.6, 1.8] },
+  shotgun: { color: 0xfff6d0, s: [2.0, 2.0, 1.0] },
+  rocket: { color: 0xff8a2a, s: [5, 5, 2.4] },
+  laser: { color: 0x6ff5ff, s: [2.0, 2.0, 5.5] },
 };
 
 // how fast each kind's walk cycle runs
@@ -108,7 +113,8 @@ export class Crowd {
       new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2, depthWrite: false }),
       MAX_SOLDIERS + MAX_ENEMIES + 700 + 120,
     );
-    this.bullets = this.inst(new THREE.BoxGeometry(0.07, 0.07, 0.55), new THREE.MeshBasicMaterial({ color: 0xffffff }), MAX_BULLETS);
+    this.bullets = this.inst(new THREE.BoxGeometry(0.07, 0.07, 0.55), new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }), MAX_BULLETS);
+    this.bullets.renderOrder = 5;
 
     const bar = new THREE.PlaneGeometry(1.3, 0.16);
     const barMat = (c: number) => new THREE.MeshBasicMaterial({ color: c, depthTest: false, transparent: true });
@@ -263,12 +269,12 @@ export class Crowd {
       sc = Math.max(0.05, sc);
       d.position.set(px, 0, pz);
       d.rotation.set(0, 0, 0);
-      d.scale.setScalar(sc);
+      d.scale.setScalar(sc * SOLDIER_SCALE);
       d.updateMatrix();
       u.mesh.setMatrixAt(i, d.matrix);
       u.attrs.anim.setXY(i, i * 1.7, moving ? 1.05 + (i % 5) * 0.03 : 0);
       u.attrs.flash.setX(i, 0);
-      this.pushShadow(px, pz, sc);
+      this.pushShadow(px, pz, sc * SOLDIER_SCALE);
     }
     u.mesh.count = n;
     u.mesh.instanceMatrix.needsUpdate = true;
@@ -300,22 +306,22 @@ export class Crowd {
       else counts[e.kind]++;
       d.position.set(e.x, 0, -e.y);
       d.rotation.set(0, Math.PI, 0);
-      d.scale.setScalar(1);
+      d.scale.setScalar(ENEMY_SCALE[e.kind]);
       d.updateMatrix();
       u.mesh.setMatrixAt(i, d.matrix);
       u.attrs.anim.setXY(i, hash01(e.id) * 6.28, e.awake ? RUN_RATE[e.kind] * (0.9 + hash01(e.id + 7) * 0.2) : 0);
       const f = this.flash.get(e.id);
       u.attrs.flash.setX(i, f ? Math.min(1, f / FLASH_TIME) * FLASH_GAIN[e.kind] : 0);
-      if (!far) this.pushShadow(e.x, -e.y, SHADOW[e.kind]);
+      if (!far) this.pushShadow(e.x, -e.y, SHADOW[e.kind] * ENEMY_SCALE[e.kind]);
 
       if (e.kind === 'brute' && e.hp < e.maxHp && bars < 90) {
         const frac = Math.max(0.02, e.hp / e.maxHp);
-        d.position.set(e.x, 2.15, -e.y);
+        d.position.set(e.x, 2.15 * ENEMY_SCALE.brute, -e.y);
         d.rotation.set(-0.55, 0, 0);
         d.scale.set(1, 1, 1);
         d.updateMatrix();
         this.barBg.setMatrixAt(bars, d.matrix);
-        d.position.set(e.x - (1 - frac) * 0.65, 2.15, -e.y + 0.01);
+        d.position.set(e.x - (1 - frac) * 0.65, 2.15 * ENEMY_SCALE.brute, -e.y + 0.01);
         d.scale.set(frac, 0.7, 1);
         d.updateMatrix();
         this.barFill.setMatrixAt(bars, d.matrix);
@@ -390,7 +396,7 @@ export class Crowd {
       const fade = Math.min(1, (k.life / k.maxLife) * 3.5); // shrink away at the end
       d.position.set(k.x, k.y, k.z);
       d.rotation.set(k.rx, k.kind === 'soldier' ? 0 : Math.PI, k.rz);
-      d.scale.setScalar(Math.max(0.01, fade));
+      d.scale.setScalar(Math.max(0.01, fade) * scaleOf(k.kind));
       d.updateMatrix();
       u.mesh.setMatrixAt(i, d.matrix);
       u.attrs.anim.setXY(i, 0, 0);

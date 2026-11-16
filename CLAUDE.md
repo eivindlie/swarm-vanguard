@@ -1,0 +1,48 @@
+# Swarm Vanguard
+
+Original mobile-first 3D lane shooter for the browser (Vite + TypeScript + Three.js). The squad auto-advances and
+auto-fires; the player steers sideways, picks gates, shoots blocks and survives hordes and bosses. See `README.md`
+for the player-facing rules and `ASSETS.md` for how art/audio are generated.
+
+The user chats in Norwegian; all in-game text is English. Small private project: **commit and push to `origin/main`
+after each commit** (the user has said this is fine). Pushing to `main` deploys to GitHub Pages via
+`.github/workflows/deploy.yml`.
+
+## Commands
+- `npm run dev` dev server (LAN reachable, open it on a phone) · `npm test` vitest (sim) · `npm run e2e` Playwright
+  (phone viewport, inputs, draw-call/triangle budget) · `npm run build` typecheck + production build.
+- `npm run balance [seeds]` headless bot win rates per level (pass `all` as 2nd arg to include slow bonus levels).
+- `npx tsx tools/tune.ts` re-tunes horde size per level into `src/levels/tuned.json` (~15 min, run it in the background).
+- Visual feedback loop: `node tools/shots.mjs <levelId> <seed> <ticks,..> <balanced|x> [theme 0-3] [dpr]` writes
+  `screenshots/*.png`; `tools/boss-shots.mjs`, `tools/menu-shot.mjs`. **Look at the screenshots** after visual changes.
+- Other tools: `trace.ts` (squad size over time per policy), `scan.ts` (win rate vs k), `jackpot-timing.ts`,
+  `pin-test.ts`, `sim-perf.ts`, `render-perf.mjs`, `weapons.ts`, `lengths.ts`.
+- URL params: `?level=<id>&seed=&speed=&autostart=1&autoplay=balanced|greedy-expand|pure-fight|naive&theme=0-3`.
+  `window.__game` exposes `getState/step/setInput/stats/restart/stress/viewMismatches/renderer/raw`.
+
+## Architecture (the rule that matters)
+- `src/sim/` is a **deterministic fixed-step (60 Hz) simulation with no three.js/DOM imports**. The same code runs in
+  the browser and headless in Node (bots, tuner, tests). Never import render/DOM code into `src/sim`.
+- Stats are `base + modifier list` (`sim/stats.ts`); shop upgrades, pickups and gates are all just modifiers.
+- `src/render/` draws the sim: `renderer.ts` (orchestrator, camera, fx routing), `crowd.ts` (instanced units, LOD,
+  corpses, flashes), `props.ts` (gates/blocks/barrels), `world.ts` + `themes.ts` (4 worlds), `models.ts`
+  (procedural figures with body-part ids), `materials.ts` (toon + GPU limb animation via `onBeforeCompile`).
+- `src/levels/`: `builder.ts` DSL, `index.ts` (16 levels + 4 bonus levels, ids 101-104), `tuned.json` (generated).
+- `src/sim/bots.ts` are shared by the tuner and `?autoplay=`. `src/meta/` = versioned save, shop upgrades, settings.
+
+## Rules learned the hard way
+- **Render-only changes must leave `npm run balance` output identical.** Sim changes go in one batch, then one retune.
+- Any new sim mechanic must be playable by `balanced` bot without a new skill, and `k` (horde multiplier in
+  `LevelBuilder`) must scale it, otherwise the tuner collapses to the grid floor. The tuner and bots use **zero** shop upgrades.
+- Levels are addressed by **id** (bonus levels are 101+); `levelIdx`/array position is play order. Tools must use
+  `LEVELS.find(l => l.id === id)`, never `LEVELS[id - 1]`.
+- Bullets must spawn in front of a block ahead, or deep crowds shoot over it (regression test exists).
+- Hordes placed right after a shoot-block must sit on the opposite side, or the pinned squad is overrun.
+- Entity ids restart per `Game`; `renderer.reset()` on every restart (e2e checks level-pair id collisions).
+- Performance budget (headless proxy; real-device FPS is unverified): <90 draw calls and <330k triangles with
+  300 soldiers + 2000 enemies (e2e test). Crowd uses distance LOD; keep outlines to brutes/bosses only.
+- Visual scale of units is render-only (`SOLDIER_SCALE`/`ENEMY_SCALE` in `crowd.ts`); hit boxes live in the sim.
+- Pace is `GAME_SPEED` (1.25x sim clock) in `src/main.ts`; weapon ranges are in `WEAPONS` (`sim/game.ts`) and changing
+  them needs a retune.
+- Known: levels 5 and 7 are still won by standing still (the tuner falls back there).
+- The repo is `eivindlie/swarm-vanguard` (public: Pages from a private repo needs a paid plan). Don't change visibility without asking.

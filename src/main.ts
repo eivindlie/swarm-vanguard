@@ -69,8 +69,10 @@ function refreshToggles() {
 function refreshMenu() {
   hud.setCoins(save.coins);
   hud.renderLevels(LEVELS, urlLevel ? LEVELS.length : save.unlockedLevel, save.stars, levelIdx, (i) => {
+    // tapping a level plays it right away
     restart(LEVELS[i].id);
     refreshMenu();
+    startGame();
   });
   refreshToggles();
 }

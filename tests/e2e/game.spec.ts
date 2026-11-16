@@ -156,3 +156,31 @@ test('a bot clears the Jackpot Vault bonus level and gets the bonus payout', asy
   // 60 base + 3 stars (+10) + first clear (+60) + 0.6 per survivor (~300) => well above a normal level
   expect(save.coins).toBeGreaterThan(250);
 });
+
+test('tapping a level in the menu starts that level directly', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('swarmvanguard.save')) {
+      localStorage.setItem('swarmvanguard.save', JSON.stringify({ version: 1, unlockedLevel: 6, coins: 0, stars: {}, upgrades: {} }));
+    }
+  });
+  await page.goto('/?seed=1');
+  await page.waitForFunction(() => (window as any).__game);
+  await page.locator('#levels .lv', { hasText: /^3/ }).click();
+  await expect(page.locator('#start')).not.toHaveClass(/show/);
+  await expect(page.locator('#lvl')).toHaveText('LEVEL 3');
+  await page.waitForTimeout(400);
+  const s = await page.evaluate(() => (window as any).__game.getState());
+  expect(s.squad.y).toBeGreaterThan(0);
+});
+
+test('the menu can scroll on touch and the play button is above the level grid, even on a small phone', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.goto('/?seed=1');
+  await page.waitForFunction(() => (window as any).__game);
+  const btn = await page.locator('#startBtn').boundingBox();
+  const grid = await page.locator('#levels').boundingBox();
+  expect(btn!.y).toBeLessThan(grid!.y);
+  expect(btn!.y + btn!.height).toBeLessThan(640); // visible without scrolling on a small phone
+  const touch = await page.evaluate(() => getComputedStyle(document.getElementById('start')!).touchAction);
+  expect(touch).toBe('pan-y');
+});

@@ -46,12 +46,12 @@
     #count { position: absolute; transform: translate(-50%, -100%); font-weight: 900; font-size: 26px; color: #fff; -webkit-text-stroke: 4px #1b3a8a; paint-order: stroke fill; text-shadow: 0 3px 0 #1b3a8a; white-space: nowrap; }
     .pop { position: absolute; transform: translate(-50%, -50%); font-weight: 900; font-size: 22px; color: #ffe27a; -webkit-text-stroke: 4px #000a; paint-order: stroke fill; animation: pop 0.9s ease-out forwards; white-space: nowrap; }
     @keyframes pop { from { opacity: 1; transform: translate(-50%, -50%) scale(0.8); } to { opacity: 0; transform: translate(-50%, -160%) scale(1.3); } }
-    .overlay { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: safe center; overflow-y: auto; gap: 12px; background: #000a; pointer-events: auto; text-align: center; padding: 24px; color: #fff; }
+    .overlay { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: safe center; overflow-y: auto; touch-action: pan-y; -webkit-overflow-scrolling: touch; gap: 12px; background: #000a; pointer-events: auto; text-align: center; padding: 24px; color: #fff; }
     .overlay.show { display: flex; }
-    .overlay h1 { margin: 0; font-size: 40px; text-shadow: 0 4px 0 #0008; }
+    .overlay h1 { margin: 0; font-size: 33px; white-space: nowrap; text-shadow: 0 4px 0 #0008; }
     .overlay p { margin: 0; opacity: 0.85; }
     #coins { font-weight: 800; color: #ffe27a; }
-    #levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; width: 100%; max-width: 310px; }
+    #levels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; width: 100%; max-width: 330px; }
     .lvh { grid-column: 1 / -1; font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #ffe27a; text-align: left; margin-top: 4px; opacity: 0.9; }
     #shop { background: #0b0e22; z-index: 5; }
     #shop h2 { margin: 0; font-size: 28px; }
@@ -62,7 +62,7 @@
     .row .tx i { font-style: normal; color: #9fe3a8; }
     .buy { border: 0; border-radius: 10px; padding: 8px 12px; font-weight: 900; font-size: 14px; color: #1b1b2f; background: linear-gradient(#ffe27a,#ffb21f); box-shadow: 0 3px 0 #a86a00; min-width: 74px; }
     .buy:disabled { background: #555b6e; color: #aab; box-shadow: 0 3px 0 #333847; }
-    .lv { border: 0; border-radius: 12px; padding: 8px 0 6px; font-weight: 900; font-size: 18px; color: #fff; background: #3558c8; box-shadow: 0 3px 0 #1d3380; }
+    .lv { border: 0; border-radius: 12px; padding: 7px 0 5px; font-weight: 900; font-size: 17px; color: #fff; background: #3558c8; box-shadow: 0 3px 0 #1d3380; }
     .lv small { display: block; font-size: 11px; letter-spacing: 1px; color: #ffe27a; min-height: 14px; }
     .lv.bonus { background: #8a4fd6; box-shadow: 0 3px 0 #4f2a8a; }
     .lv.bonus:disabled { background: #444a5c; box-shadow: 0 3px 0 #2a2e3b; }
@@ -84,7 +84,7 @@
       <div id="hint"><div class="hand">👆</div><span>DRAG TO STEER</span></div>
       <div id="count">0</div>
     </div>
-    <div class="overlay show" id="start"><h1>SWARM VANGUARD</h1><p>Drag to steer. Shoot blocks, pick gates, grow your squad.</p><div id="coins"></div><div id="levels"></div><div id="toggles"></div><button class="btn" id="startBtn">Tap to start</button><button class="btn ghost" id="shopBtn">Upgrades</button></div>
+    <div class="overlay show" id="start"><h1>SWARM VANGUARD</h1><p>Drag to steer. Shoot blocks, pick gates, grow your squad. Tap a level to play it.</p><div id="coins"></div><button class="btn" id="startBtn">Tap to start</button><div id="levels"></div><button class="btn ghost" id="shopBtn">Upgrades</button><div id="toggles"></div></div>
     <div class="overlay" id="shop"><h2>UPGRADES</h2><div id="shopCoins" style="font-weight:800;color:#ffe27a"></div><div id="shopRows" style="display:flex;flex-direction:column;gap:8px;width:100%;align-items:center"></div><button class="btn ghost" id="shopBack">Back</button></div>
     <div class="overlay" id="end"><h1 id="endTitle"></h1><div id="stars"></div><p id="endText"></p><button class="btn" id="endBtn">Retry</button><button class="btn ghost" id="menuBtn">Level select</button></div>
   </div>
