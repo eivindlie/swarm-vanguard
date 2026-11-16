@@ -56,6 +56,7 @@ installDebugApi({
 if (params.get('autostart') === '1') startGame();
 
 function handleEvents() {
+  renderer.fxEvents(game);
   for (const e of game.events) {
     if (e.t === 'gate') {
       const p = renderer.project(e.x, e.y, 1.5);

@@ -19,7 +19,10 @@ export function installDebugApi(h: DebugHooks) {
     setInput: (x: number | null) => (h.controls.override = x),
     step: (n = 1) => {
       const g = h.getGame();
-      for (let i = 0; i < n; i++) g.step({ targetX: h.controls.value() });
+      for (let i = 0; i < n; i++) {
+        g.step({ targetX: h.controls.value() });
+        h.renderer.fxEvents(g);
+      }
       h.renderer.render(g, 1 / 60);
       return g.snapshot();
     },

@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import { Game, LANE_HALF, gateLabel, type Block, type Counter, type Gate } from '../sim/game';
 import type { EnemyKind } from '../sim/level';
+import { Rng } from '../sim/rng';
+import { Particles } from './fx';
+import { soldierGeometry, gruntGeometry, runnerGeometry, bruteGeometry, bossGeometry, cactusGeometry, rockGeometry, mesaGeometry } from './models';
 
 const MAX_SOLDIERS = 320;
 const MAX_ENEMIES = 700;
@@ -79,6 +82,9 @@ export class GameRenderer {
   private camX = 0;
   private shake = 0;
   private time = 0;
+  readonly fx: Particles;
+  private shadows!: Inst;
+  private shadowN = 0;
 
   constructor(private host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -97,15 +103,21 @@ export class GameRenderer {
 
     this.buildWorld(400);
 
-    const geoSoldier = new THREE.CapsuleGeometry(0.17, 0.3, 3, 8);
-    this.soldiers = this.makeInst(geoSoldier, new THREE.MeshLambertMaterial({ color: 0x2f6fff }), MAX_SOLDIERS);
-    const mk = (kind: EnemyKind, geo: THREE.BufferGeometry, color: number) => {
-      this.enemyMeshes[kind] = this.makeInst(geo, new THREE.MeshLambertMaterial({ color }), MAX_ENEMIES);
+    this.buildDecor(260);
+    const vcMat = () => new THREE.MeshLambertMaterial({ vertexColors: true });
+    this.soldiers = this.makeInst(soldierGeometry(), vcMat(), MAX_SOLDIERS);
+    const mk = (kind: EnemyKind, geo: THREE.BufferGeometry, max = MAX_ENEMIES) => {
+      this.enemyMeshes[kind] = this.makeInst(geo, vcMat(), max);
     };
-    mk('grunt', new THREE.CapsuleGeometry(0.2, 0.28, 3, 8), 0xe23b3b);
-    mk('runner', new THREE.ConeGeometry(0.24, 0.7, 7), 0xff8a1f);
-    mk('brute', new THREE.CapsuleGeometry(0.5, 0.6, 4, 10), 0x8e1b1b);
-    mk('boss', new THREE.BoxGeometry(2.6, 3, 2.2), 0x5b0f5b);
+    mk('grunt', gruntGeometry());
+    mk('runner', runnerGeometry());
+    mk('brute', bruteGeometry(), 80);
+    mk('boss', bossGeometry(), 2);
+    // cheap blob shadows for every unit (one draw call)
+    const shadowGeo = new THREE.CircleGeometry(0.28, 10);
+    shadowGeo.rotateX(-Math.PI / 2);
+    this.shadows = this.makeInst(shadowGeo, new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false }), MAX_SOLDIERS + MAX_ENEMIES + 80);
+    this.fx = new Particles(this.scene);
     this.bullets = this.makeInst(new THREE.BoxGeometry(0.07, 0.07, 0.55), new THREE.MeshBasicMaterial({ color: 0xffd23a }), MAX_BULLETS);
 
     this.resize();
@@ -158,6 +170,62 @@ export class GameRenderer {
     }
   }
 
+  private buildDecor(length: number) {
+    const rng = new Rng(1234);
+    const place = (geo: THREE.BufferGeometry, n: number, minX: number, maxX: number, scale: [number, number]) => {
+      const m = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }), n);
+      const d = new THREE.Object3D();
+      for (let i = 0; i < n; i++) {
+        const side = rng.next() < 0.5 ? -1 : 1;
+        d.position.set(side * rng.range(minX, maxX), 0, -rng.range(-20, length));
+        d.rotation.set(0, rng.range(0, 6.28), 0);
+        d.scale.setScalar(rng.range(scale[0], scale[1]));
+        d.updateMatrix();
+        m.setMatrixAt(i, d.matrix);
+      }
+      m.frustumCulled = false;
+      this.scene.add(m);
+    };
+    place(cactusGeometry(), 90, LANE_HALF + 1.2, LANE_HALF + 9, [0.9, 1.6]);
+    place(rockGeometry(), 110, LANE_HALF + 0.9, LANE_HALF + 14, [0.6, 1.8]);
+    place(mesaGeometry(), 22, LANE_HALF + 14, LANE_HALF + 34, [1.2, 2.4]);
+  }
+
+  /** Turn sim events into particles/shake. Call after each sim step. */
+  fxEvents(game: Game) {
+    const sq = game.squad;
+    for (const e of game.events) {
+      switch (e.t) {
+        case 'shot':
+          this.fx.burst(sq.x, sq.y + 0.9, 0.7, 3, 0xffe27a, 1.2, 0.1, 0.12, 0.4);
+          break;
+        case 'hit':
+          this.fx.burst(e.x, e.y, 0.5, 1, 0xfff1a8, 1.5, 0.08, 0.2, 1);
+          break;
+        case 'kill':
+          this.fx.burst(e.x, e.y, 0.4, e.kind === 'boss' ? 50 : e.kind === 'brute' ? 14 : 5, e.kind === 'boss' ? 0xc27bff : 0xd93636, e.kind === 'boss' ? 7 : 2.4, e.kind === 'boss' ? 0.3 : 0.14, 0.55, 3);
+          if (e.kind === 'boss') this.addShake(0.6);
+          break;
+        case 'blockHit':
+          this.fx.burst(e.x, e.y, 0.9, 2, 0xcfd6dd, 2, 0.1, 0.35, 2);
+          break;
+        case 'counterHit':
+          this.fx.burst(e.x, e.y, 0.9, 2, 0xffd23a, 2, 0.09, 0.35, 2);
+          break;
+        case 'blockBreak':
+          this.fx.burst(e.x, e.y, 1, 30, 0xcfd6dd, 4.5, 0.2, 0.8, 4);
+          this.fx.burst(e.x, e.y, 1, 12, 0xffd23a, 3.5, 0.15, 0.8, 5);
+          break;
+        case 'gate':
+          this.fx.burst(sq.x, sq.y, 0.6, 18, e.delta >= 0 ? 0x6fb4ff : 0xff6a6a, 4, 0.14, 0.7, 4);
+          break;
+        case 'squadHit':
+          this.fx.burst(sq.x, sq.y, 0.5, Math.min(8, e.lost + 2), 0x7fb0ff, 2.5, 0.12, 0.45, 2.5);
+          break;
+      }
+    }
+  }
+
   resize() {
     const w = this.host.clientWidth || 360;
     const h = this.host.clientHeight || 640;
@@ -192,8 +260,11 @@ export class GameRenderer {
     this.camera.position.set(this.camX + jx, 12.5 + jy, -sq.y + 10.5);
     this.camera.lookAt(this.camX, 0, -sq.y - 7);
 
+    this.shadowN = 0;
     this.drawSquad(game);
     this.drawEnemies(game);
+    this.drawShadowsEnd();
+    this.fx.update(dt);
     this.drawBullets(game);
     this.syncBlocks(game.blocks);
     this.syncGates(game.gates);
@@ -210,12 +281,16 @@ export class GameRenderer {
     for (let i = 0; i < n; i++) {
       const r = spacing * Math.sqrt(i + 0.5);
       const a = i * 2.39996;
-      const bob = Math.abs(Math.sin(this.time * 12 + i * 1.7)) * 0.07;
-      d.position.set(sq.x + Math.cos(a) * r, 0.33 + bob, -(sq.y + Math.sin(a) * r * 0.9));
-      d.rotation.set(0, 0, 0);
+      const ph = this.time * 12 + i * 1.7;
+      const bob = Math.abs(Math.sin(ph)) * 0.08;
+      const px = sq.x + Math.cos(a) * r;
+      const pz = -(sq.y + Math.sin(a) * r * 0.9);
+      d.position.set(px, bob, pz);
+      d.rotation.set(-0.12, 0, Math.sin(ph) * 0.1);
       d.scale.setScalar(1);
       d.updateMatrix();
       this.soldiers.setMatrixAt(i, d.matrix);
+      this.pushShadow(px, pz, 1);
     }
     this.soldiers.count = n;
     this.soldiers.instanceMatrix.needsUpdate = true;
@@ -229,18 +304,35 @@ export class GameRenderer {
       const i = counts[e.kind];
       if (i >= MAX_ENEMIES) continue;
       counts[e.kind]++;
-      const bob = e.awake ? Math.abs(Math.sin(e.wobble)) * 0.1 : 0;
-      const baseH = e.kind === 'boss' ? 1.5 : e.kind === 'brute' ? 0.8 : e.kind === 'runner' ? 0.35 : 0.34;
-      d.position.set(e.x, baseH + bob, -e.y);
-      d.rotation.set(0, e.kind === 'runner' ? Math.PI : 0, 0);
+      const big = e.kind === 'boss' ? 0.5 : 0;
+      const bob = e.awake ? Math.abs(Math.sin(e.wobble)) * (e.kind === 'boss' ? 0.08 : 0.1) : 0;
+      d.position.set(e.x, bob, -e.y);
+      // face the squad (models face -Z, so turn around), with a little waddle
+      d.rotation.set(0, Math.PI, e.awake ? Math.sin(e.wobble) * (e.kind === 'boss' ? 0.03 : 0.12) : 0);
       d.scale.setScalar(1);
       d.updateMatrix();
       mesh.setMatrixAt(i, d.matrix);
+      this.pushShadow(e.x, -e.y, e.kind === 'boss' ? 5.5 : e.kind === 'brute' ? 2.6 : 1.1 + big);
     }
     (Object.keys(counts) as EnemyKind[]).forEach((k) => {
       this.enemyMeshes[k].count = counts[k];
       this.enemyMeshes[k].instanceMatrix.needsUpdate = true;
     });
+  }
+
+  private pushShadow(x: number, z: number, scale: number) {
+    if (this.shadowN >= this.shadows.instanceMatrix.count) return;
+    const d = this.dummy;
+    d.position.set(x, 0.02, z);
+    d.rotation.set(0, 0, 0);
+    d.scale.setScalar(scale);
+    d.updateMatrix();
+    this.shadows.setMatrixAt(this.shadowN++, d.matrix);
+  }
+
+  private drawShadowsEnd() {
+    this.shadows.count = this.shadowN;
+    this.shadows.instanceMatrix.needsUpdate = true;
   }
 
   private drawBullets(game: Game) {
